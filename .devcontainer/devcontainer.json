@@ -15,7 +15,7 @@
       "tflint": "latest"
     },
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/powershell:1": {},
+    "ghcr.io/devcontainers/features/powershell:2": {},
     "ghcr.io/azure/azure-dev/azd:latest": {}
   },
   // Install Bicep, site deps, Marp (slides), and markdown linters after create.
