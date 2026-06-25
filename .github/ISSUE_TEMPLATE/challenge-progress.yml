@@ -1,0 +1,33 @@
+name: Challenge progress
+description: Track a pupil's or trainer's progress through a microhack challenge.
+title: "[Challenge NN] <short summary>"
+labels: ["challenge"]
+body:
+  - type: dropdown
+    id: challenge
+    attributes:
+      label: Challenge
+      options:
+        - "00 — Setup, Tooling & the CFS Brief"
+        - "01 — Requirements Assessment (B.1.1)"
+        - "02 — Solution Design + Well-Architected Review (B.2.1 + B.2.2)"
+        - "03 — Deploy the Secure Hub & Spoke (B.3.1 + B.3.2)"
+        - "04 — Private Networking, Isolation & Private Compute (B.3.2)"
+        - "05 — Validation & Testing (B.4.1)"
+        - "06 — As-Built, Operations & Teardown (B.4.2)"
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome / evidence produced
+      description: What did you build, and which evidence artifact did it produce?
+    validations:
+      required: false
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Blockers
+      description: Anything that prevented completion (quota, permissions, agent output, etc.)
+    validations:
+      required: false

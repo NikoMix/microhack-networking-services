@@ -1,0 +1,70 @@
+---
+title: Overview
+description: What the Module B Networking Microhack is, the scenario you work, and how the seven challenges map to the Advanced Specialization audit controls.
+sidebar:
+  order: 1
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+This microhack teaches partner network architects to deliver — and **prove** — every
+**Module B** control of the *Networking Services in Microsoft Azure Advanced
+Specialization* (V1.8.1) in a single classroom day, using **GitHub Copilot agents,
+skills, and Model Context Protocol (MCP) servers** to drive a real Azure deployment.
+
+## The pattern: AI prepares, humans decide
+
+Each challenge follows an agentic workflow inspired by real partner engagements: a
+Copilot **orchestrator** delegates to specialised sub-agents (requirements analyst,
+solution designer, Well-Architected reviewer, IaC engineer, validation engineer,
+evidence author) and a **challenger** agent reviews the output at each human approval
+gate. You stay in control; the agents do the heavy lifting and produce the evidence.
+
+## The scenario — Contoso Financial Services (CFS)
+
+A regulated EU fintech migrating off an ageing on-premises / third-party network to
+Azure. CFS needs a secure, isolated, private network with no public PaaS exposure,
+private compute, central egress control, secure global app delivery, and hybrid
+connectivity to its branches and data centre. One narrative spine runs through all
+seven challenges.
+
+## What you deliver (Module B coverage)
+
+| Challenge | Module B control(s) | Outcome |
+|---|---|---|
+| 00 — Setup & the CFS brief | _foundation_ | Codespace, OIDC to Azure, agents/MCP ready |
+| 01 — Requirements Assessment | **B.1.1** | Per-customer assessment artifact (8 topic areas) |
+| 02 — Solution Design + WAR | **B.2.1 + B.2.2** | HLD with ALZ design areas + Well-Architected Review (2 pillars) |
+| 03 — Deploy the Secure Hub & Spoke | **B.3.1 + B.3.2** | Hub, Firewall, Bastion, gateways live in your subscription |
+| 04 — Private networking & compute | **B.3.2** | Private Link, private compute, App Gateway + WAF, Front Door (≥5 services) |
+| 05 — Validation & Testing | **B.4.1** | Test plan executed, remediation log, customer sign-off |
+| 06 — As-Built & Operations | **B.4.2** | As-built, decision log, SOPs/runbooks, then teardown |
+
+<Aside type="tip">
+  The same CFS engagement satisfies **multiple controls** — exactly as the audit
+  guidance permits. The [Module B mapping](../reference/) shows the full cross-reference.
+</Aside>
+
+## The five workload scenarios (you cover three)
+
+Module B recognises five scenarios. CFS deliberately spans three of them so you
+practise the richest service set:
+
+1. **Secure network infrastructure** ✅ (hub & spoke, Firewall, segmentation)
+2. **On-prem and branch connectivity** ✅ (VPN / Virtual WAN; ExpressRoute by design)
+3. Remote work at scale
+4. **Secure global app delivery** ✅ (Front Door + WAF + Application Gateway)
+5. 5G and edge computing
+
+## How the day runs
+
+<Steps>
+1. **Setup** your Codespace, authenticate to Azure with OIDC, and meet the agents.
+2. **Assess & design** with the agents — produce B.1.1 and B.2.1/B.2.2 evidence.
+3. **Deploy** the landing zone via GitHub Actions; long-running gateways start early.
+4. **Validate** connectivity, security, and performance; capture sign-off.
+5. **Document** the as-built state and operations runbooks, then **tear down**.
+</Steps>
+
+See the full [Agenda](../agenda/) for timings and the [Prerequisites](../prerequisites/)
+before you begin.

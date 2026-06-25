@@ -1,0 +1,57 @@
+---
+title: Prerequisites
+description: Everything a pupil and a trainer needs before running the Module B Networking Microhack — accounts, Azure permissions, skills, and cost guardrails.
+sidebar:
+  order: 3
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+## Per-pupil requirements
+
+| Requirement | Detail |
+|---|---|
+| **GitHub account** | With access to GitHub Codespaces and GitHub Copilot |
+| **Azure subscription** | **Owner** on a subscription or resource group where you can deploy networking + create a federated credential (OIDC) |
+| **Region quota** | Capacity in **Sweden Central** (fallback **West Europe**) for VNet, Azure Firewall, Public IPs, App Gateway, Bastion |
+| **Skill level** | AZ-700 / SC-100 level networking; comfortable with the Azure portal and CLI |
+
+<Aside type="caution" title="Cost & guardrails">
+  This microhack deploys **real, billable** Azure resources (Azure Firewall, gateways,
+  App Gateway, Bastion). Budget roughly **€40–80** if resources run for the full day.
+  Challenge 00 sets a **budget + alert**, and **Challenge 06 tears everything down** — do
+  not skip teardown. Estimated per-service costs are in each challenge.
+</Aside>
+
+## Modular inference (Copilot agents)
+
+The Copilot agents in this repo are **model-agnostic**. Trainers can point the agentic
+tooling at any of:
+
+- **GitHub Models** (default; no Azure dependency)
+- **Azure OpenAI**
+- **Azure AI Foundry**
+
+See [`.github/models/`](https://github.com/NikoMix/microhack-networking-services/tree/main/.github/models)
+and the [Trainer guide](../trainer/) for how to switch backends. **No AI application is
+deployed** — inference only drives the Copilot agents and MCP.
+
+## Tooling (pre-installed in the Codespace)
+
+The dev container ships with everything; you do not install anything locally:
+
+- Azure CLI + Bicep, Terraform, GitHub CLI, PowerShell 7, Node 24, `azd`
+- Marp (slides), markdownlint, Astro (docs preview)
+- GitHub Copilot + Azure MCP server configuration
+
+## Trainer pre-flight (before the class)
+
+<Steps>
+1. Confirm each pupil has an eligible Azure subscription and Owner rights.
+2. Verify regional quota for Azure Firewall + Public IPs in the chosen region.
+3. Decide the inference backend (GitHub Models is the zero-setup default).
+4. Dry-run Challenge 03's deployment once to warm any subscription-level registrations.
+5. Review the [reset & troubleshooting](../trainer/) runbook.
+</Steps>
+
+Ready → start with [Challenge 00](../challenges/).

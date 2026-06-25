@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Module B control definitions
+    url: https://github.com/NikoMix/specialization-networking-services
+    about: The source specialization toolkit with full audit control evidence guidance.
+  - name: Documentation site
+    url: https://NikoMix.github.io/microhack-networking-services/
+    about: Overview, agenda, prerequisites, challenges, and trainer guide.
