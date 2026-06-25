@@ -1,0 +1,149 @@
+---
+title: "Challenge 01 — Requirements Assessment"
+description: Use the requirements-analyst Copilot agent to conduct a structured assessment of the Contoso Financial Services engagement across all eight Module B topic areas and produce the B.1.1 evidence artifact.
+sidebar:
+  order: 2
+  label: "01 · Requirements Assessment"
+---
+
+import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Duration" icon="clock">45 minutes</Card>
+  <Card title="Module B control" icon="approve-check">**B.1.1** Requirements Assessment</Card>
+  <Card title="Agent" icon="seti:github">`.github/agents/requirements-analyst.agent.md`</Card>
+  <Card title="Evidence artifact" icon="document">`B1.1_RequirementsAssessment_CFS_v1.docx`</Card>
+</CardGrid>
+
+## Objective
+
+Demonstrate that you have performed a **structured requirements assessment** for the CFS
+engagement covering all eight Module B topic areas. The output is a customer-signed (or
+trainer-approved) assessment document that an auditor can review against the B.1.1 checklist.
+
+## Module B control — B.1.1
+
+> **B.1.1 — Customer Requirements Assessment**
+> The partner has documented a requirements assessment for the customer engagement that covers
+> all required topic areas: business requirements, current state, target architecture,
+> networking services, security and compliance, hybrid connectivity, identity and access, and
+> operational requirements.
+
+The auditor checks for **evidence of discovery conversations**, a documented current state,
+explicit networking requirements, and a customer signature or acknowledgement.
+
+<Aside type="tip" title="One control, one artifact">
+A single B1.1 document covers the entire B.1.1 control. Fill in the
+`evidence-templates/B1.1_RequirementsAssessment_CFS_v1.docx` template with the agent output
+and your own review notes.
+</Aside>
+
+## Agents and skills used
+
+| Agent / Skill | File | Role |
+|---|---|---|
+| `requirements-analyst` | `.github/agents/requirements-analyst.agent.md` | Drives structured discovery and produces the assessment draft |
+| `challenger` | `.github/agents/challenger.agent.md` | Reviews the draft for gaps and pushes back on assumptions |
+| Skill: `b11-requirements.prompt.md` | `.github/prompts/b11-requirements.prompt.md` | 8-topic-area prompt template |
+
+## MCP tools used
+
+- **Azure documentation MCP** — looks up current Azure service capabilities to validate CFS requirements
+- **GitHub MCP** — reads the CFS scenario from the repository context
+
+## The CFS discovery brief
+
+Before you run the agent, ingest the CFS context from the [CFS Scenario page](../../reference/cfs-scenario/).
+Key facts to hold in mind during assessment:
+
+- **Industry**: Regulated EU fintech (PSD2/GDPR)
+- **Migration scope**: On-premises + third-party network → Azure
+- **Hybrid**: 3 branch offices + 1 data centre (VPN/ExpressRoute)
+- **Compliance**: Zero public PaaS endpoints, network isolation between workloads
+- **Scale**: Medium enterprise; 500 internal users, 2 external-facing applications
+
+## Steps
+
+<Steps>
+1. **Brief the orchestrator** — in Copilot Chat, start the assessment workflow:
+   ```
+   @network-architect Start a B.1.1 requirements assessment for Contoso Financial Services.
+   Delegate to @requirements-analyst. Use the CFS scenario context from the repo.
+   ```
+
+2. **Answer the discovery questions** — the `requirements-analyst` agent will ask you a
+   series of structured questions in each of the eight topic areas. Answer each one as if
+   you are the CFS engagement manager. Use the scenario facts from Challenge 00 and the
+   [CFS Scenario reference](../../reference/cfs-scenario/). Example agent prompt:
+   ```
+   @requirements-analyst What are CFS's top-3 networking non-negotiables for the migration?
+   ```
+
+3. **Review the draft assessment** — when the agent produces a draft, read it carefully.
+   Then invoke the challenger:
+   ```
+   @challenger Review this requirements assessment draft. Are all 8 Module B topic areas
+   covered? Identify any gaps or assumptions that need confirmation.
+   ```
+
+4. **Iterate** — address any gaps the challenger identifies. Pay special attention to:
+   - Hybrid connectivity requirements (VPN endpoints, bandwidth, failover)
+   - Security and compliance constraints (PSD2 encryption, audit log retention)
+   - Identity and access model (Entra ID, PIM, break-glass)
+
+5. **Populate the evidence template** — copy the finalised assessment content into
+   `evidence-templates/B1.1_RequirementsAssessment_CFS_v1.docx`:
+   ```
+   @evidence-author Populate the B1.1 template from the finalised requirements assessment.
+   Output as structured markdown so I can paste into the Word template.
+   ```
+
+6. **Get sign-off** — in the classroom context, your trainer acts as the CFS sponsor.
+   Have them review the document and confirm coverage. Note the reviewer and date in
+   the document header.
+</Steps>
+
+## The eight Module B topic areas
+
+The agent structures discovery around these areas — verify all eight appear in your output:
+
+| # | Topic area | Key questions for CFS |
+|---|---|---|
+| 1 | Business requirements | Regulatory drivers, SLAs, budget envelope |
+| 2 | Current state | On-prem topology, existing connectivity, pain points |
+| 3 | Target architecture | Hub & spoke, isolation zones, naming conventions |
+| 4 | Networking services | Which Azure services are required (Firewall, Bastion, etc.) |
+| 5 | Security and compliance | PSD2/GDPR, encryption in transit/at rest, SIEM integration |
+| 6 | Hybrid connectivity | Branch VPN, data-centre ExpressRoute, failover |
+| 7 | Identity and access | Entra ID, PIM, admin access model, break-glass |
+| 8 | Operational requirements | Monitoring (Network Watcher), alerting, patching, DR RTO/RPO |
+
+## Validation checklist
+
+| Check | Evidence |
+|---|---|
+| All 8 topic areas are documented | Assessment document sections |
+| CFS-specific requirements are cited (not generic) | Customer name appears throughout |
+| Hybrid connectivity requirements explicitly call out branch VPN + ER design | Section 6 |
+| Security requirements reference PSD2 and zero-public-PaaS | Section 5 |
+| Document has reviewer name and date | Document header |
+| Template `B1.1_RequirementsAssessment_CFS_v1.docx` is filled in | `evidence-templates/` |
+
+## Evidence artifact
+
+| Artifact | Template location | Naming convention |
+|---|---|---|
+| Requirements Assessment | `evidence-templates/B1.1_RequirementsAssessment_CFS_v1.docx` | `B1.1_RequirementsAssessment_CFS_v1.docx` |
+
+The filled-in document satisfies **B.1.1** in the audit.
+
+## Cost estimate
+
+Challenge 01 deploys **no Azure resources**. Cost: **€0**.
+
+<Aside type="tip" title="Trainer tip — grading hint">
+A strong B.1.1 submission is **CFS-specific** throughout. Reject generic templates where
+the customer name only appears in the header. Look for explicit references to PSD2,
+branch connectivity, and the workload isolation requirement. See the
+[Solution 01 key](../../solutions/01-requirements-assessment/) for a reference answer.
+</Aside>

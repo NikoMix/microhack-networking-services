@@ -1,0 +1,81 @@
+---
+title: "Solution 01 — Requirements Assessment"
+description: Trainer solution key for Challenge 01. Includes a reference B.1.1 assessment output for CFS, expected agent prompts, grading hints, and common pitfalls.
+sidebar:
+  order: 2
+  label: "Sol 01 · Requirements"
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="Trainer-only">
+This page contains reference answers. Do not share with pupils until after they have
+submitted their B.1.1 artifact.
+</Aside>
+
+## Reference assessment summary (B.1.1)
+
+A strong B.1.1 document for CFS covers all eight topic areas with CFS-specific content.
+The table below shows the expected content per area.
+
+| Topic area | Expected CFS-specific content |
+|---|---|
+| 1. Business requirements | PSD2/GDPR compliance, €40–80 lab budget cap, 99.9% SLA target for critical workloads, board-mandated cloud migration by Q4 |
+| 2. Current state | On-premises 3-tier network (Core/Distribution/Access), 3 branches on MPLS, 1 DC with ExpressRoute-eligible co-lo, ageing Cisco ASA firewalls |
+| 3. Target architecture | Azure Landing Zone Hub & Spoke, Sweden Central primary, West Europe DR, hub contains shared services |
+| 4. Networking services | Azure Firewall Premium, Bastion Standard, VPN/VWAN gateway, Private Endpoints, App Gateway + WAF, Front Door Premium |
+| 5. Security & compliance | PSD2 Article 95 network isolation, GDPR data residency (EU), zero public PaaS endpoints, TLS 1.2+, SIEM integration (Sentinel) |
+| 6. Hybrid connectivity | 3 branch VPN connections (IKEv2), 1 DC ExpressRoute (design-only, 1 Gbps), BGP for dynamic routing |
+| 7. Identity & access | Entra ID P2, PIM for privileged roles, Bastion for admin, no direct RDP/SSH from internet |
+| 8. Operational requirements | Network Watcher, NSG flow logs + Traffic Analytics, 30-day log retention, 4h RTO / 15m RPO for critical workloads |
+
+## Sample agent interaction
+
+**Pupil prompt:**
+```
+@requirements-analyst What are CFS's top-3 networking non-negotiables for the migration?
+```
+
+**Expected agent response:**
+```
+Based on the CFS scenario context, the three non-negotiable networking requirements are:
+
+1. Zero public PaaS endpoints — all Azure PaaS services must be accessible only via
+   Private Endpoints. No public network access allowed on Key Vault, Storage, or SQL.
+   (PSD2 Article 95 isolation requirement.)
+
+2. Central egress control — all outbound internet traffic from Azure workloads must
+   transit Azure Firewall Premium (IDPS enabled). No direct internet breakout from spokes.
+
+3. Hybrid connectivity resilience — the 3 branch offices require always-on VPN connectivity
+   to Azure with BGP failover. The data-centre connection requires ExpressRoute for
+   production (budget-constrained to design-only for this lab).
+```
+
+## Common pitfalls
+
+| Pitfall | How to identify | Grading impact |
+|---|---|---|
+| Generic template with only CFS name in header | Body text has no CFS-specific facts | Fail — send back for revision |
+| Missing hybrid connectivity section | Section 6 is blank or has only "VPN required" | Partial — must specify branch count, ExpressRoute intent |
+| Security section lists "encryption" without specifics | No mention of PSD2, TLS version, or audit logging | Partial — must be regulation-specific |
+| No customer acknowledgement | Document has no reviewer name/date | Fail on B.1.1 — auditor will reject |
+| Conflating B.1.1 with B.2.1 | Assessment includes design decisions | Flag — requirements capture and design are separate artifacts |
+
+## Grading hints
+
+- **Excellent (auditor-ready)**: All 8 areas present, CFS-specific throughout, PSD2 and GDPR
+  cited by name, hybrid requirements quantified (3 branches, ER speed), document has reviewer.
+- **Pass**: All 8 areas present, mostly CFS-specific, minor gaps (e.g. RTO/RPO not specified).
+- **Partial**: 6–7 areas, some generic content — acceptable if remaining areas are strong.
+- **Fail**: Fewer than 6 areas, or no customer acknowledgement, or no CFS-specific content.
+
+## Key B.1.1 auditor checks
+
+The Advanced Specialization auditor will specifically look for:
+
+1. Evidence of a **discovery conversation** (dates, attendees, or at minimum a "prepared by" line)
+2. A documented **current state** — not just target state
+3. Explicit **networking service selection rationale** — why these services for this customer
+4. **Hybrid connectivity** requirements (branch + DC connectivity)
+5. A named reviewer or customer representative who acknowledged the document

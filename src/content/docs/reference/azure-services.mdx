@@ -1,0 +1,131 @@
+---
+title: Azure Networking Services Catalogue
+description: Cheat-sheet of the eight Azure native networking services deployed in this microhack — what each service does, why it is needed for CFS, which Module B control it satisfies, and key configuration notes.
+sidebar:
+  order: 2
+  label: Azure services catalogue
+---
+
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+Quick reference for the eight Azure networking services deployed in this microhack.
+The audit catalogue recognises 11 native networking services; this lab covers 8 deployed
+and 1 by design (ExpressRoute).
+
+<Aside type="tip" title="Use this during Challenge 02">
+Reference this page when writing the Solution Design (B.2.1) to justify service selection.
+The "Why for CFS" column maps directly to the requirements from B.1.1.
+</Aside>
+
+## Service catalogue
+
+### 1 — Azure Virtual Network + VNet Peering
+
+| Attribute | Detail |
+|---|---|
+| **What it is** | Software-defined network fabric; VNet Peering connects VNets within or across regions |
+| **CFS resource names** | `cfs-hub-vnet-swc` (hub), `cfs-app-vnet-swc` (app spoke) |
+| **Why for CFS** | Provides network isolation between workload tiers; peering enables hub to serve shared services (Firewall, Bastion, Gateway) to spokes without routing through the internet |
+| **Module B controls** | B.3.1, B.3.2 (Service 1) |
+| **Key config for lab** | Hub: `10.0.0.0/16` · Spoke: `10.1.0.0/16` · Peering: hub allows gateway transit, spoke uses remote gateway |
+| **WAF pillar** | Reliability: zone-redundant deployment; Security: subnet isolation with NSGs |
+
+### 2 — Azure Firewall Premium
+
+| Attribute | Detail |
+|---|---|
+| **What it is** | Managed, cloud-native network security service with stateful inspection, FQDN filtering, IDPS, and TLS inspection |
+| **CFS resource name** | `cfs-hub-afw-swc` |
+| **Why for CFS** | PSD2 Article 95 requires network isolation and anomaly detection — Azure Firewall Premium's IDPS (Intrusion Detection and Prevention System) satisfies this. Central hub placement enforces egress for all spokes. |
+| **Module B controls** | B.3.1, B.3.2 (Service 2), B.4.1 (tested) |
+| **Key config for lab** | SKU: Premium · IDPS mode: Alert+Deny · Threat Intel: Alert · Policy: centralised Firewall Policy resource |
+| **Cost indicator** | ~€25–30/day (Premium SKU) — tear down promptly |
+
+### 3 — Azure Bastion Standard
+
+| Attribute | Detail |
+|---|---|
+| **What it is** | Fully managed PaaS jump service for RDP/SSH over TLS to VMs — no public IP required on VMs |
+| **CFS resource name** | `cfs-hub-bas-swc` |
+| **Why for CFS** | CFS requires zero public IPs on compute (no public attack surface). Bastion Standard enables IP-based connection to any VM in peered VNets, including file transfer. |
+| **Module B controls** | B.3.1, B.3.2 (Service 3), B.4.1 (tested) |
+| **Key config for lab** | SKU: Standard (not Developer — Standard required for IP-based connection) · Must be in dedicated `AzureBastionSubnet` (/26 or larger) |
+| **WAF pillar** | Security: no internet-facing management ports |
+
+### 4 — VPN Gateway (or Azure Virtual WAN)
+
+| Attribute | Detail |
+|---|---|
+| **What it is** | Azure VPN Gateway: site-to-site IPsec/IKE VPN to on-prem/branch. Azure Virtual WAN: hub-managed any-to-any connectivity at scale. |
+| **CFS resource name** | `cfs-hub-gw-swc` |
+| **Why for CFS** | CFS has 3 branch offices requiring always-on connectivity. VPN Gateway (IKEv2, BGP) connects branches in the lab. VWAN is documented as the production recommendation for >5 branches. |
+| **Module B controls** | B.3.1, B.3.2 (Service 4) |
+| **Key config for lab** | SKU: VpnGw1 · Generation: Generation2 · BGP: enabled (ASN 65515) · Note: 30–45 min to provision — **start this first** |
+| **Cost indicator** | ~€5–10/day — significant; tear down after Challenge 06 |
+
+### 5 — Azure Private Link / Private Endpoints
+
+| Attribute | Detail |
+|---|---|
+| **What it is** | Private Link brings Azure PaaS services onto your VNet using a private IP. Private Endpoints are the network interface that connects to a Private Link resource. |
+| **CFS resource names** | `pe-kv-swc` (Key Vault), `pe-st-swc` (Storage), `pe-sql-swc` (SQL) |
+| **Why for CFS** | PSD2 and CFS policy require zero public PaaS exposure. Private Endpoints combined with `publicNetworkAccess: Disabled` on the PaaS resource ensure all traffic stays on the private network. |
+| **Module B controls** | B.3.1, B.3.2 (Service 5), B.4.1 (tested) |
+| **Key config for lab** | Private DNS Zones: one per service type, VNet-linked to spoke · `publicNetworkAccess: Disabled` on all target resources · NSG on PE subnet optional but recommended |
+| **WAF pillar** | Security: eliminates public attack surface for PaaS |
+
+### 6 — Azure Load Balancer (Internal, Standard)
+
+| Attribute | Detail |
+|---|---|
+| **What it is** | Layer-4 load distribution for TCP/UDP traffic within or between VNets — Standard SKU supports HA ports and zone redundancy |
+| **CFS resource name** | `cfs-app-ilb-swc` |
+| **Why for CFS** | Distributes traffic across multiple private compute instances in the app spoke. Internal SKU ensures no public exposure; Standard SKU enables zone redundancy for the 99.9% SLA target. |
+| **Module B controls** | B.3.2 (Service 6) |
+| **Key config for lab** | SKU: Standard · Frontend: private IP from `snet-app` · Backend pool: spoke compute VMs · Health probe: HTTP port 80 |
+| **WAF pillar** | Reliability: distributes load; enables instance replacement without downtime |
+
+### 7 — Application Gateway + WAF v2
+
+| Attribute | Detail |
+|---|---|
+| **What it is** | Layer-7 load balancer with SSL termination, URL routing, and integrated Web Application Firewall. WAF v2 uses OWASP CRS rulesets. |
+| **CFS resource name** | `cfs-app-agw-swc` |
+| **Why for CFS** | CFS's external-facing application requires application-layer DDoS and OWASP protection before traffic reaches the backend. App Gateway sits in the spoke, in front of the internal Load Balancer. |
+| **Module B controls** | B.3.1, B.3.2 (Service 7), B.4.1 (WAF tested) |
+| **Key config for lab** | SKU: WAF_v2 · WAF mode: Prevention (not Detection) · Ruleset: OWASP 3.2 · Dedicated subnet: `snet-appgw` (/24) · Backend pool: internal Load Balancer frontend IP |
+| **WAF pillar** | Security: OWASP protection; Reliability: zone-redundant v2 SKU |
+
+### 8 — Azure Front Door Premium + WAF Policy
+
+| Attribute | Detail |
+|---|---|
+| **What it is** | Global anycast CDN and load balancer with built-in WAF, DDoS protection, and Private Link to backend origins |
+| **CFS resource names** | `cfs-afd-profile`, `cfs-app-endpoint` |
+| **Why for CFS** | CFS serves customers across the EU and must provide low-latency, DDoS-protected global delivery. Front Door Premium's Private Link origin connects to App Gateway without exposing it to the internet. |
+| **Module B controls** | B.3.1, B.3.2 (Service 8), B.4.1 (WAF tested) |
+| **Key config for lab** | SKU: Premium (required for Private Link origin) · WAF policy: Prevention mode · Origin: App Gateway via Private Link approval · Custom domain: optional in lab |
+| **Cost indicator** | ~€5–8/day |
+
+## Design-only service — ExpressRoute
+
+| Attribute | Detail |
+|---|---|
+| **What it is** | Dedicated private connectivity from on-premises to Azure via a connectivity provider, bypassing the public internet |
+| **Why for CFS** | CFS's data centre requires dedicated 1 Gbps connectivity for latency-sensitive workloads and data transfer |
+| **Why design-only** | An ExpressRoute circuit + gateway costs €200+/month — not appropriate for a 1-day lab |
+| **Evidence location** | Documented in `B2.1_SolutionDesign_CFS_v1.docx` (ALZ Connectivity section, ADR-06) and called out in `B3.2_ServiceEvidence_CFS_v1.docx` as design-only |
+| **Audit note** | The audit accepts design documentation for services not deployed due to cost constraints, provided the design is documented and the rationale is noted |
+
+## Service deployment timing
+
+| Service | Deploy time | Challenge | Note |
+|---|---|---|---|
+| VNet + Peering | 1–2 min | 03 | Always first in Bicep order |
+| Azure Firewall | 5–10 min | 03 | Premium SKU takes longer |
+| Azure Bastion | 3–5 min | 03 | Straightforward |
+| VPN Gateway | **30–45 min** | 03 | **Start first — see Challenge 03 banner** |
+| Private Endpoints | 2–3 min | 04 | Fast; DNS zone link is the complexity |
+| Load Balancer | 1–2 min | 04 | Fast |
+| App Gateway + WAF | 5–10 min | 04 | WAF provisioning adds time |
+| Front Door Premium | 5–15 min | 04 | Global propagation takes time |

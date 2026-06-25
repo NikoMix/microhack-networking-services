@@ -1,0 +1,189 @@
+---
+title: "Challenge 00 — Setup, Tooling & the CFS Brief"
+description: Configure your GitHub Codespace, establish OIDC trust to Azure, wire up the Copilot agents and MCP servers, and read in the Contoso Financial Services brief before any challenge work begins.
+sidebar:
+  order: 1
+  label: "00 · Setup & CFS Brief"
+---
+
+import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Duration" icon="clock">45 minutes</Card>
+  <Card title="Module B control" icon="information">Foundation (no evidence artifact required)</Card>
+  <Card title="Outcome" icon="approve-check">Codespace running · OIDC trust to Azure · agents and MCP live · budget alert set</Card>
+</CardGrid>
+
+## Objectives
+
+By the end of this challenge you will have:
+
+- A GitHub Codespace with all tooling pre-installed and running
+- OIDC federated credentials linking your GitHub repository to your Azure subscription
+- The Copilot custom agents and Azure MCP server responding in Copilot Chat
+- A budget alert on your subscription to guard against runaway spend
+- A working preview of the docs site (`npm run dev`)
+- A clear understanding of the CFS customer scenario that runs through every challenge
+
+<Aside type="note" title="No formal evidence artifact">
+Challenge 00 is foundation work. The audit does not require an artifact for environment
+setup. The budget alert you deploy here is referenced in the teardown evidence for
+Challenge 06.
+</Aside>
+
+## The CFS scenario (read this first)
+
+**Contoso Financial Services (CFS)** is a regulated EU fintech migrating its on-premises
+network and workloads to Azure. CFS operates under PSD2/GDPR constraints and has strict
+requirements for network isolation, zero public PaaS exposure, audit-ready logging, and
+hybrid connectivity to three branch offices and a data-centre.
+
+The engagement spans three Module B scenarios:
+
+| Scenario | What you build |
+|---|---|
+| Secure network infrastructure | Hub & spoke, Azure Firewall, Bastion, segmented spokes |
+| On-prem and branch connectivity | VPN / Virtual WAN (real); ExpressRoute design-only |
+| Secure global app delivery | Azure Front Door + WAF + Application Gateway + WAF |
+
+The full scenario narrative, requirements, and constraints are in the
+[CFS Scenario reference page](../../reference/cfs-scenario/).
+
+## Part A — Open the Codespace
+
+<Steps>
+1. Navigate to the repository on GitHub: `NikoMix/microhack-networking-services`
+2. Select **Code ▸ Codespaces ▸ Create codespace on main** (or your trainer's fork)
+3. Wait for the dev container to build (~2 min). The container auto-installs:
+   - Azure CLI + Bicep, Terraform, GitHub CLI, PowerShell 7
+   - Node 24, `azd`, Marp, markdownlint, Astro
+   - GitHub Copilot extension + Azure MCP server configuration
+4. Verify tooling is ready:
+   ```bash
+   az version && bicep --version && terraform version && gh version
+   ```
+5. Launch the docs preview:
+   ```bash
+   npm run dev
+   ```
+   Open the forwarded port (4321) and confirm the site loads.
+</Steps>
+
+## Part B — Authenticate to Azure (OIDC)
+
+<Aside type="caution" title="No long-lived credentials">
+Use OIDC federated credentials only. Do **not** create a client secret or service principal
+password. The deploy workflow (`deploy.yml`) and teardown workflow (`teardown.yml`) both use
+`azure/login@v2` with OIDC.
+</Aside>
+
+<Steps>
+1. **Create the Entra ID app registration** (one per pupil):
+   ```bash
+   APP_ID=$(az ad app create --display-name "cfs-microhack-oidc" --query appId -o tsv)
+   SP_OBJ=$(az ad sp create --id $APP_ID --query id -o tsv)
+   echo "App ID: $APP_ID"
+   ```
+2. **Add the federated credential** for the `main` branch:
+   ```bash
+   REPO="<your-github-org-or-user>/microhack-networking-services"
+   az ad app federated-credential create \
+     --id $APP_ID \
+     --parameters "{
+       \"name\":\"github-actions-main\",
+       \"issuer\":\"https://token.actions.githubusercontent.com\",
+       \"subject\":\"repo:${REPO}:ref:refs/heads/main\",
+       \"audiences\":[\"api://AzureADTokenExchange\"]
+     }"
+   ```
+3. **Grant Contributor + User Access Administrator** on the subscription:
+   ```bash
+   SUB_ID=$(az account show --query id -o tsv)
+   az role assignment create --assignee $SP_OBJ \
+     --role "Contributor" --scope "/subscriptions/$SUB_ID"
+   az role assignment create --assignee $SP_OBJ \
+     --role "User Access Administrator" --scope "/subscriptions/$SUB_ID"
+   ```
+4. **Set GitHub Actions secrets** in your repository:
+
+   | Secret | Value |
+   |---|---|
+   | `AZURE_CLIENT_ID` | App ID from step 1 |
+   | `AZURE_TENANT_ID` | `az account show --query tenantId -o tsv` |
+   | `AZURE_SUBSCRIPTION_ID` | `az account show --query id -o tsv` |
+
+5. Verify by running the **validate** workflow:
+   ```bash
+   gh workflow run validate.yml
+   gh run watch
+   ```
+</Steps>
+
+## Part C — Verify the Copilot agents and MCP
+
+<Steps>
+1. Open **Copilot Chat** in VS Code (inside the Codespace).
+2. Type `@network-architect` — confirm the orchestrator agent responds with a welcome message and lists its available sub-agents.
+3. Ask it to describe the CFS scenario:
+   ```
+   @network-architect Summarise the Contoso Financial Services engagement in 3 bullet points.
+   ```
+4. Confirm the **Azure MCP server** is live:
+   ```
+   @network-architect Use Azure MCP to list available Azure networking services in Sweden Central.
+   ```
+5. If an agent does not respond, check `.github/agents/*.agent.md` and `.github/models/` for model configuration. The default backend is **GitHub Models** — no Azure AI dependency required.
+</Steps>
+
+## Part D — Deploy a budget alert
+
+<Aside type="tip" title="Do this before any Azure deployment">
+Set the budget alert now so it is in place for all resource deployments in Challenges 03–04.
+</Aside>
+
+<Steps>
+1. Set the budget via Azure CLI:
+   ```bash
+   az consumption budget create \
+     --budget-name "cfs-microhack-budget" \
+     --amount 80 \
+     --category Cost \
+     --time-grain Monthly \
+     --start-date "$(date +%Y-%m-01)" \
+     --end-date "$(date -d '+12 months' +%Y-%m-01)" \
+     --resource-group-filter "rg-cfs-hub-swc" "rg-cfs-app-swc" \
+     --notifications "{
+       \"actual_GreaterThan_80_Percent\":{
+         \"enabled\":true,
+         \"operator\":\"GreaterThan\",
+         \"threshold\":80,
+         \"contactEmails\":[\"<your-email>\"],
+         \"thresholdType\":\"Actual\"
+       }
+     }"
+   ```
+2. Confirm the budget appears in **Azure Portal → Cost Management → Budgets**.
+</Steps>
+
+## Validation checklist
+
+Before moving on, verify all items below are green:
+
+| Check | Command / Portal |
+|---|---|
+| Codespace is running with Node 24 and Azure CLI | `node -v && az version` |
+| `npm run dev` serves the docs site on port 4321 | Browser preview |
+| OIDC validate workflow passes | `gh run list --workflow validate.yml` |
+| All 3 GitHub Actions secrets are set | Repository → Settings → Secrets |
+| Budget alert is visible in Cost Management | Azure Portal |
+| `@network-architect` agent responds in Copilot Chat | VS Code Copilot Chat |
+
+## Cost estimate
+
+Challenge 00 deploys **no Azure resources** except the budget alert (free). The OIDC app
+registration is free. Total cost for this challenge: **€0**.
+
+<Aside type="tip" title="Trainer tip">
+If pupils are in the same cohort subscription, they can share one Entra app registration
+but must each have a separate federated credential subject pointing at their fork or branch.
+</Aside>

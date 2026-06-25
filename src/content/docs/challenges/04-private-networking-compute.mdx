@@ -1,0 +1,282 @@
+---
+title: "Challenge 04 — Private Networking, Isolation & Private Compute + Global Delivery"
+description: Deploy Private Link/Private Endpoints, private compute with no public IPs, Application Gateway + WAF, Azure Front Door + WAF, and Azure Load Balancer to complete the CFS B.3.2 ≥5 native services requirement.
+sidebar:
+  order: 5
+  label: "04 · Private Networking & Global Delivery"
+---
+
+import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Duration" icon="clock">75 minutes</Card>
+  <Card title="Module B control" icon="approve-check">**B.3.2** ≥5 native Azure networking services</Card>
+  <Card title="Agent" icon="seti:github">`iac-engineer` · `challenger`</Card>
+  <Card title="Evidence artifact" icon="document">`B3.2_ServiceEvidence_CFS_v1.docx` (completed)</Card>
+</CardGrid>
+
+## Objectives
+
+Complete the CFS networking deployment by adding:
+
+1. **Private Endpoints + Private DNS Zones** for Azure Key Vault, Storage, and SQL (Private Link)
+2. **Private compute** — workload VMs with no public IPs, accessible only via Bastion
+3. **Azure Load Balancer** — internal, distributing across compute instances
+4. **Application Gateway + WAF (v2)** — application-layer protection at the spoke edge
+5. **Azure Front Door Premium + WAF policy** — secure global delivery for CFS's external-facing app
+
+After this challenge, the CFS deployment uses **≥7 native Azure networking services**,
+satisfying **B.3.2**.
+
+## Module B control — B.3.2
+
+> **B.3.2 — ≥5 Native Azure Networking Services**
+> The partner's implementation uses five or more native Azure networking services.
+
+Services after Challenge 04:
+
+| # | Service | Resource name |
+|---|---|---|
+| 1 | Virtual Network + VNet Peering | `cfs-hub-vnet-swc`, `cfs-app-vnet-swc` |
+| 2 | Azure Firewall Premium | `cfs-hub-afw-swc` |
+| 3 | Azure Bastion Standard | `cfs-hub-bas-swc` |
+| 4 | VPN Gateway (or Azure Virtual WAN) | `cfs-hub-gw-swc` |
+| 5 | Private Link / Private Endpoints | `pe-kv-swc`, `pe-st-swc`, `pe-sql-swc` |
+| 6 | Azure Load Balancer (Internal) | `cfs-app-ilb-swc` |
+| 7 | Application Gateway + WAF v2 | `cfs-app-agw-swc` |
+| 8 | Azure Front Door Premium + WAF | `cfs-afd-profile` |
+
+**Total: 8 services** — well above the ≥5 required.
+
+<Aside type="note" title="ExpressRoute — by design only">
+CFS's ExpressRoute circuit is documented in the HLD (Challenge 02) as a design-only item.
+The lab does not provision ExpressRoute due to cost (€200+/month). The design documentation
+is sufficient for the B.3.2 audit if you note it explicitly in `B3.2_ServiceEvidence_CFS_v1.docx`.
+</Aside>
+
+## Agents and skills used
+
+| Agent / Skill | File | Role |
+|---|---|---|
+| `iac-engineer` | `.github/agents/iac-engineer.agent.md` | Generates Private Endpoint and App Gateway parameters, reviews Bicep |
+| `challenger` | `.github/agents/challenger.agent.md` | Checks for any public-facing resources that violate CFS zero-public-PaaS policy |
+| Skill: `b32-private-networking.prompt.md` | `.github/prompts/b32-private-networking.prompt.md` | Private Link and App Gateway prompts |
+
+## IaC reference
+
+| Module | Resource | Location |
+|---|---|---|
+| `infra/bicep/private-endpoints/main.bicep` | Private Endpoints + DNS zones | `infra/bicep/private-endpoints/` |
+| `infra/bicep/compute/main.bicep` | Private VMs, Load Balancer | `infra/bicep/compute/` |
+| `infra/bicep/appgateway/main.bicep` | Application Gateway + WAF | `infra/bicep/appgateway/` |
+| `infra/bicep/frontdoor/main.bicep` | Front Door Premium + WAF policy | `infra/bicep/frontdoor/` |
+
+## Part A — Deploy Private Endpoints and Private DNS
+
+<Steps>
+1. Ask the `iac-engineer` to review the private endpoint configuration:
+   ```
+   @iac-engineer Review infra/bicep/private-endpoints/main.bicep for the CFS deployment.
+   Confirm Key Vault, Storage, and SQL each have a private endpoint in cfs-app-vnet-swc,
+   a private DNS zone linked to the spoke VNet, and no public network access enabled.
+   ```
+
+2. Run `what-if` validation for private endpoints:
+   ```bash
+   az deployment group what-if \
+     --resource-group rg-cfs-app-swc \
+     --template-file infra/bicep/private-endpoints/main.bicep \
+     --parameters infra/bicep/parameters/lab.bicepparam
+   ```
+
+3. Deploy:
+   ```bash
+   gh workflow run deploy.yml -f component=private-endpoints
+   gh run watch
+   ```
+
+4. Verify DNS resolution from a test VM (or Cloud Shell in the spoke):
+   ```bash
+   # Key Vault
+   nslookup cfs-kv-swc.vault.azure.net
+   # Should resolve to a 10.1.x.x private IP, NOT the public vault.azure.net IP
+   ```
+
+5. Verify no public network access is enabled on the services:
+   ```bash
+   az keyvault show -n cfs-kv-swc --query 'properties.networkAcls.defaultAction' -o tsv
+   # Expected: Deny
+   az storage account show -n cfsstswc --query 'publicNetworkAccess' -o tsv
+   # Expected: Disabled
+   ```
+</Steps>
+
+## Part B — Deploy private compute (no public IPs)
+
+<Steps>
+1. Deploy private compute:
+   ```bash
+   gh workflow run deploy.yml -f component=compute
+   gh run watch
+   ```
+
+2. Verify no public IPs are attached to compute:
+   ```bash
+   az vm list -g rg-cfs-app-swc --query '[].{name:name,publicIpAddress:networkProfile}' -o table
+   az network public-ip list -g rg-cfs-app-swc -o table
+   # Expected: no public IPs in the spoke resource group
+   ```
+
+3. Test private access via Bastion:
+   - Navigate to the VM in Azure Portal
+   - Select **Connect → Bastion**
+   - Confirm SSH/RDP connects successfully over the private path
+</Steps>
+
+## Part C — Deploy Azure Load Balancer (internal)
+
+<Steps>
+1. Verify the Load Balancer parameters:
+   ```
+   @iac-engineer Review the internal Load Balancer config in infra/bicep/compute/main.bicep.
+   Confirm it is an internal SKU Standard, frontend IP is from the app spoke subnet,
+   and health probes target port 80 on the backend VMs.
+   ```
+
+2. Deploy:
+   ```bash
+   gh workflow run deploy.yml -f component=compute
+   # Load Balancer is co-deployed with compute
+   ```
+
+3. Verify:
+   ```bash
+   az network lb show -n cfs-app-ilb-swc -g rg-cfs-app-swc \
+     --query '{sku:sku.name, frontendIp:frontendIPConfigurations[0].privateIPAddress}' -o json
+   ```
+</Steps>
+
+## Part D — Deploy Application Gateway + WAF v2
+
+<Steps>
+1. Review the App Gateway parameters:
+   ```
+   @iac-engineer Review infra/bicep/appgateway/main.bicep.
+   Confirm WAF mode is Prevention (not Detection), CRS 3.2 ruleset is active,
+   the App Gateway subnet is dedicated (no other resources), and
+   the backend pool points to the internal Load Balancer frontend IP.
+   ```
+
+2. Run `what-if`:
+   ```bash
+   az deployment group what-if \
+     --resource-group rg-cfs-app-swc \
+     --template-file infra/bicep/appgateway/main.bicep \
+     --parameters infra/bicep/parameters/lab.bicepparam
+   ```
+
+3. Deploy:
+   ```bash
+   gh workflow run deploy.yml -f component=appgateway
+   gh run watch
+   ```
+
+4. Verify WAF policy is in Prevention mode:
+   ```bash
+   az network application-gateway waf-config show \
+     --gateway-name cfs-app-agw-swc -g rg-cfs-app-swc \
+     --query '{firewallMode:firewallMode, ruleSetType:ruleSetType, ruleSetVersion:ruleSetVersion}' -o json
+   # Expected: firewallMode: Prevention, ruleSetVersion: 3.2
+   ```
+</Steps>
+
+## Part E — Deploy Azure Front Door Premium + WAF policy
+
+<Steps>
+1. Review the Front Door configuration:
+   ```
+   @iac-engineer Review infra/bicep/frontdoor/main.bicep.
+   Confirm Front Door is Premium SKU, WAF policy is in Prevention mode,
+   the origin is the Application Gateway, and Private Link origin is used
+   (no direct public endpoint from Front Door to backend).
+   ```
+
+2. Deploy:
+   ```bash
+   gh workflow run deploy.yml -f component=frontdoor
+   gh run watch
+   ```
+
+3. Test end-to-end delivery:
+   ```bash
+   AFD_ENDPOINT=$(az afd endpoint show \
+     --profile-name cfs-afd-profile \
+     --endpoint-name cfs-app-endpoint \
+     -g rg-cfs-app-swc \
+     --query hostName -o tsv)
+   curl -I "https://${AFD_ENDPOINT}"
+   # Expected: HTTP 200 or 301 from Application Gateway backend
+   ```
+
+4. Verify WAF policy is active on Front Door:
+   ```bash
+   az afd security-policy list \
+     --profile-name cfs-afd-profile -g rg-cfs-app-swc -o table
+   ```
+</Steps>
+
+## Part F — Complete the B.3.2 evidence artifact
+
+<Steps>
+1. Generate the final service evidence:
+   ```
+   @evidence-author Complete B3.2_ServiceEvidence_CFS_v1.docx. List all 8 deployed
+   Azure networking services with resource names, resource groups, Azure service purpose,
+   and the Module B scenario each satisfies. Include a note that ExpressRoute is design-only.
+   ```
+
+2. Verify the challenger approves:
+   ```
+   @challenger Review the B3.2 evidence. Do we have ≥5 distinct native networking services?
+   Are any services missing or listed generically without a specific resource name?
+   ```
+
+3. Update `evidence-templates/B3.2_ServiceEvidence_CFS_v1.docx` with the finalised content.
+</Steps>
+
+## Validation checklist
+
+| Check | Command / Portal |
+|---|---|
+| Private Endpoints exist for Key Vault, Storage, SQL | `az network private-endpoint list -g rg-cfs-app-swc -o table` |
+| DNS resolves KV/Storage/SQL to private IPs | `nslookup` from within VNet |
+| No public network access on KV/Storage | `az keyvault show` / `az storage account show` |
+| No compute VMs have public IPs | `az network public-ip list -g rg-cfs-app-swc` |
+| Internal Load Balancer is Standard SKU | `az network lb show` |
+| App Gateway WAF in Prevention mode, CRS 3.2 | `az network application-gateway waf-config show` |
+| Front Door Premium WAF policy active | `az afd security-policy list` |
+| B3.2 artifact lists ≥5 services with resource names | Evidence template |
+
+## Evidence artifacts
+
+| Control | Artifact | Notes |
+|---|---|---|
+| B.3.2 | `B3.2_ServiceEvidence_CFS_v1.docx` (completed) | All 8 services listed; ExpressRoute noted as design-only |
+
+## Cost estimate
+
+| Resource | Estimated cost (full day) |
+|---|---|
+| Application Gateway v2 (with WAF) | ~€8–12 |
+| Azure Front Door Premium | ~€5–8 |
+| Internal Load Balancer | ~€2 |
+| Private Endpoints (x3) | ~€2 |
+| **Total this challenge** | **~€17–24** |
+
+<Aside type="tip" title="Trainer tip">
+A common pitfall is having the Application Gateway use public network access to reach the
+backend. For CFS, the backend pool must point to the internal Load Balancer or directly to
+private compute. If Front Door cannot reach the App Gateway privately, the Front Door
+Private Link to App Gateway feature is required. See
+[Solution 04](../../solutions/04-private-networking-compute/) for the correct Bicep pattern.
+</Aside>

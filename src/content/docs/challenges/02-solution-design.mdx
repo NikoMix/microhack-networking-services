@@ -1,0 +1,196 @@
+---
+title: "Challenge 02 — Solution Design + Well-Architected Review"
+description: Use the solution-designer and waf-reviewer Copilot agents to produce a high-level design document and a Well-Architected Review covering Security and Reliability pillars for the CFS hub & spoke landing zone.
+sidebar:
+  order: 3
+  label: "02 · Solution Design + WAR"
+---
+
+import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Duration" icon="clock">75 minutes</Card>
+  <Card title="Module B controls" icon="approve-check">**B.2.1** Solution Design · **B.2.2** Well-Architected Review</Card>
+  <Card title="Agents" icon="seti:github">`solution-designer` · `waf-reviewer` · `challenger`</Card>
+  <Card title="Evidence artifacts" icon="document">`B2.1_SolutionDesign_CFS_v1.docx` · `B2.2_WellArchitectedReview_CFS_v1.docx`</Card>
+</CardGrid>
+
+## Objectives
+
+1. Produce a **High-Level Design (HLD)** document covering the CFS hub & spoke architecture
+   across the six ALZ design areas (networking topology, connectivity, identity, security,
+   management, governance).
+2. Produce a **Well-Architected Review** across at least two pillars, with **Security** and
+   **Reliability** mandatory, including per-pillar findings and recommendations.
+
+## Module B controls
+
+### B.2.1 — Solution Design
+
+> The partner has produced a solution design document for the customer engagement that covers
+> the target networking architecture, the Azure services selected, design decisions and
+> trade-offs, and alignment to Azure Landing Zone design areas.
+
+The auditor checks for: a named architecture pattern, a topology diagram, justified service
+selection, and mapping to ALZ design areas.
+
+### B.2.2 — Well-Architected Review
+
+> The partner has conducted a Well-Architected Review of the solution covering at least two
+> pillars of the Azure Well-Architected Framework, including Security and at least one of
+> Reliability, Performance Efficiency, Operational Excellence, or Cost Optimization.
+
+The auditor checks for: pillar coverage (≥2, Security mandatory), findings per pillar,
+prioritised recommendations, and a customer-reviewed output.
+
+<Aside type="caution" title="Two artifacts, one engagement">
+B.2.1 and B.2.2 are separate audit artifacts. The HLD and WAR are two distinct documents
+even though they describe the same CFS solution.
+</Aside>
+
+## Agents and skills used
+
+| Agent / Skill | File | Role |
+|---|---|---|
+| `solution-designer` | `.github/agents/solution-designer.agent.md` | Produces the HLD covering all ALZ design areas |
+| `waf-reviewer` | `.github/agents/waf-reviewer.agent.md` | Conducts the Well-Architected Review |
+| `challenger` | `.github/agents/challenger.agent.md` | Reviews both documents for completeness |
+| Skill: `b21-solution-design.prompt.md` | `.github/prompts/b21-solution-design.prompt.md` | HLD structure and ALZ design area prompts |
+| Skill: `b22-waf-review.prompt.md` | `.github/prompts/b22-waf-review.prompt.md` | WAF pillar questions and scoring |
+
+## MCP tools used
+
+- **Azure documentation MCP** — retrieves current ALZ design area guidance and service specs
+- **Azure Well-Architected Framework MCP** — fetches pillar questions and best practices
+
+## Architecture context
+
+The CFS solution follows the **Azure Landing Zone Hub & Spoke** topology:
+
+```
+[On-prem/Branch] ←— VPN/VWAN —→ [Hub VNet: cfs-hub-vnet-swc]
+                                       ├── Azure Firewall (egress + segmentation)
+                                       ├── Azure Bastion (private admin)
+                                       └── VPN / VWAN Gateway
+                                       ↕ VNet Peering
+                              [Spoke VNet: cfs-app-vnet-swc]
+                                       ├── Private Endpoints (KV, Storage, SQL)
+                                       ├── Private Compute (no public IPs)
+                                       └── App Gateway + WAF
+                              [Global Edge: Azure Front Door + WAF]
+```
+
+Resource naming: `cfs-[role]-[type]-swc` · Region: `swedencentral` · Environment tag: `lab`
+
+## Part A — High-Level Design (B.2.1)
+
+<Steps>
+1. **Start the HLD workflow**:
+   ```
+   @network-architect Begin the CFS solution design for Challenge 02.
+   Delegate to @solution-designer. Build a hub & spoke HLD covering all 6 ALZ design areas.
+   Region: swedencentral. Naming: cfs-<role>-<type>-swc.
+   ```
+
+2. **Review the topology section** — the agent should produce:
+   - A text-based or Mermaid topology diagram
+   - Address space plan (e.g. Hub: `10.0.0.0/16`, App spoke: `10.1.0.0/16`)
+   - Subnet breakdown for hub and at least one spoke
+   - VNet peering table
+
+3. **Step through each ALZ design area** — prompt the agent per area:
+   ```
+   @solution-designer Define the Networking Topology design area for CFS.
+   Include VNet address spaces, subnet layout, and peering configuration.
+   ```
+   Repeat for: Connectivity · Identity · Security · Management · Governance.
+
+4. **Capture design decisions** — for each key decision, the document must record:
+   - Decision made
+   - Options considered
+   - Rationale
+   - Trade-offs accepted
+
+   Key decisions to document for CFS:
+   | Decision | Recommended choice | Rationale |
+   |---|---|---|
+   | Hub-spoke vs. Virtual WAN | VPN Gateway (lab), VWAN available | Cost vs. manageability for lab |
+   | Egress control | Azure Firewall Premium | IDPS required for PSD2 |
+   | Admin access | Azure Bastion Standard | No jump-box VMs, no public IPs |
+   | Private DNS | Azure Private DNS Zones | Auto-registration for private endpoints |
+   | ExpressRoute | Design-only (no lab deployment) | Cost guardrail |
+
+5. **Invoke the challenger** on the HLD:
+   ```
+   @challenger Review this HLD. Does it cover all 6 ALZ design areas?
+   Are all CFS-specific constraints addressed (zero public PaaS, PSD2, hybrid)?
+   ```
+
+6. **Populate `B2.1_SolutionDesign_CFS_v1.docx`** using the evidence template.
+</Steps>
+
+## Part B — Well-Architected Review (B.2.2)
+
+<Steps>
+1. **Start the WAR workflow**:
+   ```
+   @network-architect Conduct a Well-Architected Review of the CFS solution.
+   Delegate to @waf-reviewer. Cover Security and Reliability as mandatory pillars.
+   ```
+
+2. **Security pillar** — the agent will walk through questions. Key areas for CFS:
+   - Network segmentation and micro-segmentation
+   - Defence-in-depth (Firewall + NSGs + Private Endpoints)
+   - Data-in-transit encryption (TLS 1.2+ enforced at Firewall)
+   - Privileged access management (Bastion + PIM)
+   - Threat detection (Azure Firewall IDPS, Defender for Cloud)
+
+3. **Reliability pillar** — key areas:
+   - Zone-redundant deployments (Firewall, App Gateway, Front Door)
+   - Failover paths (VPN active-active, ExpressRoute as design)
+   - Health monitoring (Network Watcher, Connection Monitor)
+   - RTO/RPO targets from CFS requirements (B.1.1 output)
+
+4. **Score each pillar** using the WAF 0–5 maturity scale. Record:
+   - Current maturity score
+   - Target maturity score
+   - Top 3 prioritised recommendations per pillar
+
+5. **Challenge the WAR**:
+   ```
+   @challenger Review the WAR. Are findings specific to CFS or generic?
+   Are recommendations actionable with concrete Azure service references?
+   ```
+
+6. **Populate `B2.2_WellArchitectedReview_CFS_v1.docx`** using the evidence template.
+</Steps>
+
+## Validation checklist
+
+| Check | Evidence location |
+|---|---|
+| HLD contains a topology diagram | B2.1 document, section 2 |
+| All 6 ALZ design areas covered | B2.1 document, one section per area |
+| Design decisions table with rationale | B2.1 document, section 5 |
+| WAR covers Security pillar | B2.2 document, section 3 |
+| WAR covers Reliability pillar | B2.2 document, section 4 |
+| Each WAR pillar has maturity score + ≥3 recommendations | B2.2 document |
+| Both documents reference CFS by name throughout | Document headers + body |
+| Challenger review notes addressed | Comments in document or revision history |
+
+## Evidence artifacts
+
+| Control | Artifact | Template |
+|---|---|---|
+| B.2.1 | `B2.1_SolutionDesign_CFS_v1.docx` | `evidence-templates/B2.1_SolutionDesign_CFS_v1.docx` |
+| B.2.2 | `B2.2_WellArchitectedReview_CFS_v1.docx` | `evidence-templates/B2.2_WellArchitectedReview_CFS_v1.docx` |
+
+## Cost estimate
+
+Challenge 02 deploys **no Azure resources**. Cost: **€0**.
+
+<Aside type="tip" title="Trainer tip — half-day variant">
+For a half-day run, trim Part A to hub topology + 3 design areas and Part B to Security only.
+The solution key covers a full two-pillar WAR if you want to show it as a demo. See
+[Solution 02](../../solutions/02-solution-design/) for reference answers and common pitfalls.
+</Aside>

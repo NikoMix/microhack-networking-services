@@ -1,0 +1,182 @@
+---
+title: CFS Customer Scenario Brief
+description: Full Contoso Financial Services narrative — background, current state, requirements, constraints, and success criteria that run as a single spine through all seven Module B challenges.
+sidebar:
+  order: 3
+  label: CFS scenario brief
+---
+
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+This is the **single narrative spine** that runs through all seven challenges. Every
+evidence artifact you produce — requirements assessment, HLD, WAR, test plan, as-built —
+is scoped to this customer engagement.
+
+## Customer background
+
+**Contoso Financial Services (CFS)** is a regulated European fintech founded in 2016 and
+headquartered in Stockholm, Sweden. CFS operates a consumer lending platform and a
+payments processing service under PSD2 authorisation in 12 EU member states.
+
+| Attribute | Detail |
+|---|---|
+| **Industry** | Financial services (regulated) |
+| **Headcount** | 480 employees; 12 engineers |
+| **External users** | 120,000 active borrowers; 2,400 merchant partners |
+| **Regulatory framework** | PSD2, GDPR, Swedish FSA (Finansinspektionen) |
+| **Data classification** | PII (GDPR), PCI-DSS scope (card data vault) |
+
+## Business drivers
+
+CFS is migrating to Azure for three reasons:
+
+1. **End-of-life hardware**: The on-premises network runs on 8-year-old Cisco ASA
+   firewalls and Catalyst switches scheduled for end-of-support in 18 months.
+2. **Compliance gaps**: The Swedish FSA has issued a recommendation letter citing
+   insufficient network isolation between the lending and payments workloads.
+3. **Growth**: CFS is entering two new EU markets (Poland, Portugal) and needs global
+   delivery infrastructure that the on-premises DC cannot support.
+
+## Current state
+
+### Network topology
+
+CFS operates a classic 3-tier on-premises network:
+
+```
+Stockholm HQ Data Centre
+  ├── Core: Cisco Catalyst 9500 stack
+  ├── Distribution: Cisco Catalyst 9300
+  └── Access: Cisco 9200 (500 ports, ~90% utilised)
+
+Branch offices (MPLS circuit to HQ DC):
+  ├── Gothenburg: 200 Mbit/s MPLS
+  ├── Malmö: 200 Mbit/s MPLS
+  └── Helsinki: 100 Mbit/s MPLS
+
+Internet egress: 2× 1 Gbit/s DIA via separate ISPs (active-active BGP)
+Perimeter: 2× Cisco ASA 5555-X (active-standby)
+```
+
+### Pain points
+
+| Pain point | Impact |
+|---|---|
+| Single firewall policy for lending + payments | PSD2 Article 95 isolation violation |
+| MPLS to Helsinki is at 94% utilisation | Call centre degradation during peak |
+| No WAF in front of borrower portal | 3 OWASP injection incidents in 2024 |
+| Admin access via jump-box with shared password | Swedish FSA finding |
+| No centralised logging | 72h to detect the 2024 breach attempt |
+
+## Target state
+
+CFS wants a Microsoft best-practice **Azure Landing Zone hub & spoke** architecture with:
+
+- **Network isolation** between lending and payments workloads (separate spokes)
+- **Zero public PaaS endpoints** — all Azure services accessible only via Private Link
+- **Private compute** — no public IPs on any workload VMs
+- **Central egress** via Azure Firewall Premium with IDPS enabled
+- **Secure admin access** via Azure Bastion (no jump-box VMs, no public SSH/RDP)
+- **Hybrid connectivity** to 3 branches (VPN) and the Stockholm DC (ExpressRoute design)
+- **Secure global delivery** for the borrower portal via Azure Front Door + WAF
+- **Centralised visibility** via Network Watcher, NSG flow logs, and Microsoft Sentinel
+
+## Requirements
+
+### Functional requirements
+
+| ID | Requirement | Source |
+|---|---|---|
+| FR-01 | Isolate lending and payments workloads at network level | PSD2 Art. 95 |
+| FR-02 | All PaaS services accessible only via Private Endpoints | Swedish FSA finding |
+| FR-03 | All admin access via Bastion only — no public management ports | Swedish FSA finding |
+| FR-04 | Central internet egress with FQDN filtering and IDPS | PSD2 Art. 95 / security policy |
+| FR-05 | Branch office connectivity to Azure (always-on, 99.9% uptime) | Operations |
+| FR-06 | Low-latency global delivery for borrower portal (under 50ms P95 EU) | Business |
+| FR-07 | WAF in Prevention mode in front of all external-facing apps | Security policy |
+| FR-08 | NSG flow logs with 30-day retention for all production subnets | GDPR audit trail |
+
+### Non-functional requirements
+
+| ID | Requirement | Target |
+|---|---|---|
+| NFR-01 | Availability | 99.9% for critical networking services |
+| NFR-02 | RTO | 4 hours for complete network failure |
+| NFR-03 | RPO | 15 minutes for configuration backup |
+| NFR-04 | Encryption in transit | TLS 1.2+ enforced; no TLS 1.0/1.1 |
+| NFR-05 | Data residency | All PII must remain in EU (Sweden Central + West Europe DR) |
+| NFR-06 | Budget (lab) | Total lab spend ≤ €80 for 1 day |
+| NFR-07 | Log retention | 30 days operational; 365 days compliance (immutable storage) |
+
+### Constraints
+
+| Constraint | Detail |
+|---|---|
+| **ExpressRoute — design-only** | Budget constraint; DC migration to Azure is phase 2. Branch VPN covers phase 1. |
+| **Single spoke in lab** | Production will have lending-spoke + payments-spoke (separate). Lab uses one app spoke to reduce cost and complexity. |
+| **Sweden Central primary** | Chosen for GDPR data residency (EU) and Finansinspektionen oversight |
+| **No production workloads in lab** | The lab deploys infrastructure only; no application code is deployed |
+
+## Personas
+
+| Persona | Role in microhack |
+|---|---|
+| **Elin Andersson** | CFS Chief Information Security Officer — primary sponsor; signs off B.4.1 |
+| **Marcus Lindqvist** | CFS Head of Infrastructure — main technical contact; reviews B.2.1 HLD |
+| **Trainer** | Acts as both Elin and Marcus in the classroom context |
+
+## Success criteria
+
+At the end of the engagement, CFS expects:
+
+1. A signed-off design document (B.2.1) that the Swedish FSA can review
+2. A live Azure environment matching the design, with all resources named per convention
+3. Zero public PaaS endpoints confirmed by testing (B.4.1)
+4. A Well-Architected Review with a prioritised improvement backlog (B.2.2)
+5. A set of operations runbooks the CFS infrastructure team can follow (B.4.2)
+6. An as-built document that reflects the actual deployed state (B.4.2)
+
+## Naming and tagging convention
+
+All CFS Azure resources follow this convention:
+
+| Element | Pattern | Example |
+|---|---|---|
+| Resource name | `cfs-[role]-[type]-swc` | `cfs-hub-afw-swc` |
+| Resource group | `rg-cfs-[tier]-swc` | `rg-cfs-hub-swc` |
+| Region suffix | `swc` = Sweden Central, `we` = West Europe | |
+| Tags | `environment: lab`, `workload: cfs`, `owner: microhack` | |
+
+<Aside type="note" title="Region codes">
+`swc` = Sweden Central (primary). `we` = West Europe (DR, not deployed in this lab).
+The Bicep `location` parameter defaults to `swedencentral`.
+</Aside>
+
+## Address space plan
+
+| VNet | CIDR | Purpose |
+|---|---|---|
+| Hub VNet | `10.0.0.0/16` | Shared services (Firewall, Bastion, Gateway) |
+| App spoke | `10.1.0.0/16` | CFS workload (lending + payments in lab) |
+| On-premises (HQ DC) | `192.168.0.0/16` | Simulated on-prem (local network gateway) |
+| Branch — Gothenburg | `172.16.1.0/24` | Simulated branch |
+| Branch — Malmö | `172.16.2.0/24` | Simulated branch |
+| Branch — Helsinki | `172.16.3.0/24` | Simulated branch |
+
+### Hub subnet layout
+
+| Subnet | CIDR | Purpose |
+|---|---|---|
+| AzureFirewallSubnet | `10.0.1.0/26` | Azure Firewall (required name) |
+| AzureBastionSubnet | `10.0.2.0/26` | Azure Bastion (required name, min /26) |
+| GatewaySubnet | `10.0.3.0/27` | VPN/ER Gateway (required name) |
+| RouteServerSubnet | `10.0.4.0/27` | Azure Route Server (optional) |
+
+### App spoke subnet layout
+
+| Subnet | CIDR | Purpose |
+|---|---|---|
+| snet-app | `10.1.1.0/24` | General workload |
+| snet-appgw | `10.1.2.0/24` | Application Gateway (dedicated subnet) |
+| snet-pe | `10.1.3.0/24` | Private Endpoints |
+| snet-compute | `10.1.4.0/24` | Private compute (no public IPs) |

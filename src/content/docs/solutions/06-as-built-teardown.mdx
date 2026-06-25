@@ -1,0 +1,132 @@
+---
+title: "Solution 06 — As-Built Documentation, Operations & Teardown"
+description: Trainer solution key for Challenge 06. Includes a reference as-built resource table, a complete decision log, runbook quality criteria, teardown verification, and retrospective talking points.
+sidebar:
+  order: 7
+  label: "Sol 06 · As-Built & Teardown"
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="Trainer-only">
+This page contains reference artifacts and retrospective guidance. Do not share until
+after Challenge 06 teardown is complete.
+</Aside>
+
+## Reference as-built resource inventory
+
+The as-built document must reflect **actual deployed values**, not the Bicep parameter defaults.
+The table below shows the expected values for a standard lab deployment.
+
+| Resource | RG | SKU/Tier | Private IP | Public IP | Notes |
+|---|---|---|---|---|---|
+| `cfs-hub-vnet-swc` | hub | N/A | 10.0.0.0/16 | — | 4 subnets |
+| `cfs-app-vnet-swc` | app | N/A | 10.1.0.0/16 | — | 4 subnets |
+| `cfs-hub-afw-swc` | hub | Premium | 10.0.1.4 | Dynamic (PIP) | IDPS Deny |
+| `cfs-hub-bas-swc` | hub | Standard | 10.0.2.5 | Dynamic (PIP) | IP-based connection enabled |
+| `cfs-hub-gw-swc` | hub | VpnGw1 | 10.0.3.4 | Dynamic (PIP x2) | Active-passive |
+| `cfs-app-agw-swc` | app | WAF_v2 | 10.1.2.5 | Dynamic (PIP) | Prevention, CRS 3.2 |
+| `cfs-afd-profile` | global | Premium | — | Anycast | Private Link origin |
+| `pe-kv-swc` | app | — | 10.1.3.4 | — | privatelink.vaultcore.azure.net |
+| `pe-st-swc` | app | — | 10.1.3.5 | — | privatelink.blob.core.windows.net |
+| `pe-sql-swc` | app | — | 10.1.3.6 | — | privatelink.database.windows.net |
+| `cfs-app-ilb-swc` | app | Standard | 10.1.4.100 | — | Internal only |
+
+## Reference decision log (6 entries minimum)
+
+| ADR ID | Decision | Options considered | Chosen | Rationale | Trade-off |
+|---|---|---|---|---|---|
+| ADR-01 | Firewall SKU | Standard, Premium | Premium | PSD2 requires IDPS (Premium-only feature) | 30% higher cost than Standard |
+| ADR-02 | Connectivity model | Hub-spoke + VPN Gateway, Azure Virtual WAN | Hub-spoke + VPN Gateway | Lower cost for lab; VWAN documented as production recommendation | VWAN recommended for >5 spokes |
+| ADR-03 | Admin access model | Jump-box VM, Bastion Developer, Bastion Standard | Bastion Standard | No public IPs on compute; Standard enables file transfer | More expensive than Developer SKU |
+| ADR-04 | Front Door origin connectivity | Public App Gateway IP, Private Link origin | Private Link | Prevents Front Door from bypassing WAF inspection | Requires Front Door Premium SKU |
+| ADR-05 | DNS management | Custom DNS servers (BIND/Windows DNS), Azure Private DNS Zones | Azure Private DNS Zones | Zero maintenance; auto-registration; fits lab timeline | Less flexible for split-brain DNS |
+| ADR-06 | ExpressRoute | Full deployment, Design-only | Design-only | €200+/month cost for a 1-day lab | Documented as production requirement in B.1.1 |
+
+## Runbook quality criteria
+
+Each runbook must pass these checks before B.4.2 is accepted:
+
+| Check | Pass criteria |
+|---|---|
+| Numbered steps | Steps are numbered and can be followed by someone unfamiliar with the environment |
+| CLI commands present | Each step with an Azure action includes the CLI command (not just portal description) |
+| Rollback step | Every runbook ends with a rollback procedure |
+| Approval requirement | States whether change-board approval is required and who approves |
+| Environment specificity | References CFS resource names (not generic `[resource-name]`) |
+
+## Teardown verification commands
+
+After `teardown.yml` completes, verify complete cleanup:
+
+```bash
+# No CFS resource groups should remain
+az group list --query "[?contains(name, 'cfs')]" -o table
+# Expected output: empty table
+
+# No orphaned CFS public IPs
+az network public-ip list --query "[?contains(name, 'cfs')]" -o table
+# Expected output: empty
+
+# Budget (optional check - budgets are subscription-scoped)
+az consumption budget list --query "[?name=='cfs-microhack-budget']" -o table
+```
+
+If resource groups remain due to delete locks:
+```bash
+az lock list --query "[?resourceGroup=='rg-cfs-hub-swc']" -o table
+az lock delete --name <lock-name> -g rg-cfs-hub-swc
+az group delete -n rg-cfs-hub-swc --yes --no-wait
+```
+
+## Grading hints for B.4.2
+
+### As-built document
+
+- **Excellent**: All 10+ resources listed with actual IP addresses (not placeholder), topology
+  diagram showing actual configuration, deviations from HLD explicitly called out.
+- **Pass**: ≥8 resources with resource names and SKUs; at least hub and spoke topology covered.
+- **Fail**: Copy of the HLD design (no actual values); or placeholder IPs (0.0.0.0, 10.x.x.x
+  without actual last octets).
+
+### Decision log
+
+- **Excellent**: ≥6 entries with decision, alternatives, rationale, and trade-offs.
+- **Pass**: ≥4 entries with decision and rationale.
+- **Fail**: Fewer than 3 entries, or entries without rationale.
+
+### Runbooks
+
+- **Excellent**: ≥4 runbooks with numbered steps, CLI commands, rollback, approval requirements.
+- **Pass**: ≥2 runbooks (Firewall policy + one other) with numbered steps.
+- **Fail**: Single runbook without rollback, or no CLI commands.
+
+## Retrospective talking points
+
+Use these questions in the 15-minute retrospective:
+
+1. **Agent effectiveness**: Which agent (requirements-analyst, solution-designer, waf-reviewer,
+   iac-engineer, validation-engineer, evidence-author) needed the most human editing? Why?
+2. **Evidence quality**: Which B.x.y artifact would an auditor most likely push back on?
+   What would you add to make it bulletproof?
+3. **Production delta**: What would you need to add for a real CFS deployment vs. this lab?
+   (ExpressRoute, VWAN, zone redundancy across all services, Sentinel integration)
+4. **Re-delivery**: If you delivered this microhack to your own cohort, which challenge
+   would you spend more time on? Which would you cut?
+5. **Copilot vs. manual**: For which tasks did Copilot save the most time? Where did it
+   introduce more work (review/correction)?
+
+## Complete evidence pack checklist
+
+| Control | Artifact | Expected size |
+|---|---|---|
+| B.1.1 | `B1.1_RequirementsAssessment_CFS_v1.docx` | 3–5 pages |
+| B.2.1 | `B2.1_SolutionDesign_CFS_v1.docx` | 6–10 pages with diagram |
+| B.2.2 | `B2.2_WellArchitectedReview_CFS_v1.docx` | 4–6 pages |
+| B.3.1 | `B3.1_ImplementationPlan_CFS_v1.docx` | 2–3 pages |
+| B.3.2 | `B3.2_ServiceEvidence_CFS_v1.docx` | 2–3 pages |
+| B.4.1 | `B4.1_TestPlan_CFS_v1.docx` | 3–4 pages |
+| B.4.1 | `B4.1_SignOff_CFS_v1.docx` | 1 page with signature |
+| B.4.2 | `B4.2_AsBuilt_CFS_v1.docx` | 4–6 pages with tables |
+| B.4.2 | `B4.2_DecisionLog_CFS_v1.docx` | 2–3 pages |
+| B.4.2 | `B4.2_OperationsRunbook_CFS_v1.docx` | 4–6 pages (multiple SOPs) |
