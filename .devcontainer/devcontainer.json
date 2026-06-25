@@ -1,0 +1,50 @@
+// Codespaces / VS Code Dev Container for the Module B Networking Services
+// Train-the-Trainer microhack. Provides every CLI a pupil needs to deploy the
+// secure hub & spoke landing zone, run the Copilot agents/MCP, and build the docs.
+{
+  "name": "Module B Networking Microhack",
+  // Node 24 LTS base (matches the Astro/Starlight docs site requirement).
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:24-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/azure-cli:1": {
+      "version": "latest",
+      "installBicep": true
+    },
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "latest",
+      "tflint": "latest"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/powershell:1": {},
+    "ghcr.io/azure/azure-dev/azd:latest": {}
+  },
+  // Install Bicep, site deps, Marp (slides), and markdown linters after create.
+  "postCreateCommand": "az bicep install || true && (npm ci || npm install) && npm install -g @marp-team/marp-cli markdownlint-cli2 || true",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "ms-azuretools.vscode-bicep",
+        "ms-azuretools.vscode-azureresourcegroups",
+        "ms-azuretools.azure-dev",
+        "HashiCorp.terraform",
+        "marp-team.marp-vscode",
+        "astro-build.astro-vscode",
+        "DavidAnson.vscode-markdownlint",
+        "redhat.vscode-yaml",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  // Astro dev server (4321) so pupils can preview lab guides live.
+  "forwardPorts": [4321],
+  "portsAttributes": {
+    "4321": { "label": "Docs site (Astro)", "onAutoForward": "notify" }
+  },
+  "remoteUser": "node"
+}

@@ -1,0 +1,42 @@
+# ── Node / Astro ──────────────────────────────────────────────
+node_modules/
+dist/
+.astro/
+.cache/
+*.log
+npm-debug.log*
+
+# ── Environment / secrets ─────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.azureauth
+azureauth.json
+
+# ── Terraform ─────────────────────────────────────────────────
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
+# Commit the provider lock file for reproducible Terraform runs.
+!.terraform.lock.hcl
+
+# ── Bicep / Azure ─────────────────────────────────────────────
+*.azrm.json
+.bicep/
+
+# ── Build / evidence output (generated per pupil) ─────────────
+evidence-output/
+agent-output/
+dist-slides/
+*.tmp
+
+# ── OS / editor ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/mcp.json
+!.vscode/extensions.json
+!.vscode/settings.json

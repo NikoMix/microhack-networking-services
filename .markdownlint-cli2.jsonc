@@ -1,0 +1,12 @@
+{
+  // Relaxed rules suited to technical docs / READMEs with tables and inline HTML.
+  "config": {
+    "MD013": false, // line length — long URLs and tables are fine
+    "MD033": false, // inline HTML — allowed (badges, details)
+    "MD041": false, // first line heading — front matter / badges may precede
+    "MD024": { "siblings_only": true }, // duplicate headings OK across sections
+    "MD040": false // fenced code language not always applicable (mermaid/text)
+  },
+  "globs": ["**/*.md"],
+  "ignores": ["node_modules", "dist", ".astro", "**/CHANGELOG.md"]
+}

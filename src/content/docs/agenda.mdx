@@ -1,0 +1,38 @@
+---
+title: Agenda (1 day)
+description: The full one-day classroom timetable for the Module B Networking Microhack, with timings, breaks, and trainer pacing notes.
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+A full classroom day (~7.5 hours of content + breaks). Times are indicative — see the
+[Trainer pacing guidance](../trainer/) for how to flex each block to your cohort.
+
+| Time | Block | Module B | Notes |
+|---|---|---|---|
+| 08:45 | Welcome, intros, objectives | — | Set the CFS scene |
+| 09:00 | **Challenge 00** — Setup, tooling & the CFS brief | _foundation_ | Codespace + OIDC + agents/MCP |
+| 09:45 | **Challenge 01** — Requirements Assessment | B.1.1 | Agent-driven discovery |
+| 10:30 | ☕ Break | — | 15 min |
+| 10:45 | **Challenge 02** — Solution Design + Well-Architected Review | B.2.1 + B.2.2 | HLD, ALZ design areas, 2 WAF pillars |
+| 12:00 | 🍽️ Lunch | — | 45 min |
+| 12:45 | **Challenge 03** — Deploy the Secure Hub & Spoke | B.3.1 + B.3.2 | **Start gateways first**, then continue |
+| 14:15 | ☕ Break | — | 15 min |
+| 14:30 | **Challenge 04** — Private networking, isolation & private compute | B.3.2 | Private Link, App Gateway + WAF, Front Door |
+| 15:45 | **Challenge 05** — Validation & Testing | B.4.1 | Connection Monitor, sign-off |
+| 16:45 | ☕ Break | — | 10 min |
+| 16:55 | **Challenge 06** — As-Built, Operations & Teardown | B.4.2 | Evidence pack + tear down |
+| 17:45 | Retrospective & close | — | Re-delivery tips for trainers |
+
+<Aside type="caution" title="Long-running deployments">
+  Azure VPN / Virtual WAN gateways take 30–45 minutes to provision. Challenge 03 has you
+  **kick those off first** and continue working while they build. The agenda assumes this
+  parallelism — do not wait idle.
+</Aside>
+
+<Aside type="tip" title="Half-day variant">
+  For a half-day "design-only" delivery, run Challenges 00–02 and demo 03–06 from the
+  [solution keys](../solutions/). The Trainer guide describes the cut points.
+</Aside>
