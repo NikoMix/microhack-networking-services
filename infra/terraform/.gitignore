@@ -1,0 +1,13 @@
+# Terraform working files — never commit the local cache or state.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+# Keep .terraform.lock.hcl committed for reproducible provider versions.
+# Pupils supply their own values; never commit real tfvars.
+lab.tfvars
+*.auto.tfvars
+override.tf
+override.tf.json

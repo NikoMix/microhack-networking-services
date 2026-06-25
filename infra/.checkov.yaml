@@ -1,0 +1,19 @@
+# Checkov configuration for the CFS networking landing zone.
+# Checkov is license-free (Apache-2.0) and is installed in CI only — it is NOT a repo
+# dependency. Run locally with:
+#   checkov --directory infra/bicep      --framework bicep     --config-file infra/.checkov.yaml
+#   checkov --directory infra/terraform  --framework terraform --config-file infra/.checkov.yaml
+compact: true
+quiet: true
+download-external-modules: false
+
+# Fail the scan on any reported issue so CI gates on policy findings.
+soft-fail: false
+
+skip-check:
+  # CKV_TF_1 requires module sources to be a git URL pinned to a commit hash. We consume
+  # Azure Verified Modules from the public Terraform Registry pinned to an immutable semantic
+  # version (e.g. version = "0.19.0"), which is the Microsoft-recommended supply-chain
+  # control for AVM. Registry version pinning is equivalent assurance, so this low-severity
+  # supply-chain rule is intentionally skipped.
+  - CKV_TF_1

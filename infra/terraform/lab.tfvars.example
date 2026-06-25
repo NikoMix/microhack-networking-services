@@ -1,0 +1,16 @@
+# Example values for the CFS Terraform mirror. Copy to lab.tfvars and replace placeholders.
+# No secrets are required: CI should authenticate with Azure OIDC (ARM_USE_OIDC=true).
+
+location = "swedencentral"
+
+admin_username        = "azureuser"
+admin_ssh_public_key  = "ssh-rsa REPLACE_WITH_YOUR_PUBLIC_KEY_ONLY cfs-lab"
+budget_amount         = 200
+budget_contact_emails = ["networking-lab-owner@example.com"]
+
+deploy_vpn_gateway = true
+deploy_front_door  = true
+
+environment_tags = {
+  owner = "contoso-networking-ttt"
+}

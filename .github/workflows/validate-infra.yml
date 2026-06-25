@@ -1,0 +1,72 @@
+name: Validate Infra
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/validate-infra.yml"
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/validate-infra.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bicep:
+    name: Bicep build & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Bicep CLI
+        run: az bicep install
+      - name: Bicep build (restores AVM modules + lints)
+        run: |
+          set -o pipefail
+          # `az bicep build` runs the linter; capture diagnostics and fail on any warning/error.
+          az bicep build --file infra/bicep/main.bicep 2>build.log || { cat build.log; exit 1; }
+          if grep -E ': (Warning|Error) ' build.log; then
+            echo "::error::Bicep linter reported warnings/errors (see above)."
+            exit 1
+          fi
+          echo "Bicep build + lint clean."
+      - name: Build bicepparam
+        run: az bicep build-params --file infra/bicep/parameters/lab.bicepparam --stdout > /dev/null
+
+  terraform:
+    name: Terraform fmt & validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.13.1"
+      - name: terraform fmt -check
+        run: terraform -chdir=infra/terraform fmt -check -recursive
+      - name: terraform init (no backend)
+        run: terraform -chdir=infra/terraform init -backend=false -input=false
+      - name: terraform validate
+        run: terraform -chdir=infra/terraform validate -no-color
+
+  policy-scan:
+    name: Policy scan (Checkov, license-free)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Checkov (CI-only, not a repo dependency)
+        run: pip install --no-cache-dir checkov
+      - name: Scan Bicep
+        run: |
+          checkov --directory infra/bicep --framework bicep \
+            --config-file infra/.checkov.yaml --compact --quiet
+      - name: Scan Terraform
+        run: |
+          checkov --directory infra/terraform --framework terraform \
+            --config-file infra/.checkov.yaml --compact --quiet
