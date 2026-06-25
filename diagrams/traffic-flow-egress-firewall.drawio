@@ -1,0 +1,148 @@
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+
+    <!-- Title -->
+    <mxCell id="title" value="CFS Traffic Flow &amp; Egress Through Azure Firewall" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fontColor=#1F3864;" vertex="1" parent="1">
+      <mxGeometry x="80" y="15" width="1000" height="35" as="geometry"/>
+    </mxCell>
+    <mxCell id="subtitle" value="Control: B.3.2 | All spoke traffic inspected via Azure Firewall | UDR: 0.0.0.0/0 → Firewall Private IP (10.0.0.4)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="80" y="48" width="1000" height="18" as="geometry"/>
+    </mxCell>
+
+    <!-- Internet -->
+    <mxCell id="internet" value="Internet" style="shape=mxgraph.network.cloud;fillColor=#f0f0f0;strokeColor=#999999;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="30" y="300" width="110" height="80" as="geometry"/>
+    </mxCell>
+
+    <!-- Firewall (center) -->
+    <mxCell id="fw-box" value="Azure Firewall (Hub) — Central Inspection Point" style="swimlane;startSize=30;fillColor=#FFE6B3;strokeColor=#FF8000;fontStyle=1;fontSize=11;fontColor=#7F3F00;" vertex="1" parent="1">
+      <mxGeometry x="420" y="200" width="330" height="380" as="geometry"/>
+    </mxCell>
+    <mxCell id="fw" value="Azure Firewall Standard&#xa;cfs-hub-fw-swc&#xa;Private IP: 10.0.0.4&#xa;Public IP: &lt;pip&gt;&#xa;Zones: 1, 2, 3&#xa;Threat Intel: Alert+Deny" style="shape=mxgraph.azure2.firewall;fillColor=#FF8000;strokeColor=#CC5500;fontSize=10;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="fw-box">
+      <mxGeometry x="80" y="50" width="170" height="130" as="geometry"/>
+    </mxCell>
+
+    <!-- Firewall Policy detail -->
+    <mxCell id="fwpol" value="Firewall Policy: cfs-hub-fwpol-swc&#xa;────────────────────────&#xa;[Net Rules P100] DNS UDP:53 → 168.63.129.16 ✅&#xa;[Net Rules P200] VPN BGP TCP:179 → GW ✅&#xa;[App Rules P300] FQDN: *.azure.com ✅&#xa;[App Rules P300] FQDN: *.ubuntu.com ✅&#xa;[App Rules P400] FQDN: *.malicious.* ❌ DENY&#xa;[Default] All else ❌ IMPLICIT DENY" style="text;html=1;align=left;fontSize=8;fontColor=#7F3F00;" vertex="1" parent="fw-box">
+      <mxGeometry x="10" y="200" width="310" height="160" as="geometry"/>
+    </mxCell>
+
+    <!-- Spoke VMs -->
+    <mxCell id="spoke-box" value="Workload Spoke (cfs-app-vnet-swc)" style="swimlane;startSize=28;fillColor=#dae8fc;strokeColor=#0070C0;fontStyle=1;fontSize=11;fontColor=#003087;" vertex="1" parent="1">
+      <mxGeometry x="780" y="150" width="340" height="530" as="geometry"/>
+    </mxCell>
+    <mxCell id="vm1-tf" value="VM: cfs-app-vm-swc-001&#xa;10.1.0.10 | Zone 1&#xa;No Public IP" style="shape=mxgraph.azure2.virtual_machine;fillColor=#1a5e20;strokeColor=#0d3b10;fontSize=9;fontColor=#FFFFFF;" vertex="1" parent="spoke-box">
+      <mxGeometry x="100" y="50" width="140" height="90" as="geometry"/>
+    </mxCell>
+    <mxCell id="vm2-tf" value="VM: cfs-app-vm-swc-002&#xa;10.1.0.11 | Zone 2&#xa;No Public IP" style="shape=mxgraph.azure2.virtual_machine;fillColor=#1a5e20;strokeColor=#0d3b10;fontSize=9;fontColor=#FFFFFF;" vertex="1" parent="spoke-box">
+      <mxGeometry x="100" y="185" width="140" height="90" as="geometry"/>
+    </mxCell>
+    <mxCell id="udr-box" value="Route Table (app-udr):&#xa;Prefix: 0.0.0.0/0&#xa;Next Hop: 10.0.0.4 (Firewall)&#xa;Type: VirtualAppliance&#xa;─────────────────&#xa;Applied to: AppSubnet&#xa;Applied to: PrivateEndpointSubnet&#xa;Applied to: ILBSubnet&#xa;NOT applied to: AppGatewaySubnet (restriction)" style="rounded=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=8;fontColor=#7F5F00;align=left;" vertex="1" parent="spoke-box">
+      <mxGeometry x="20" y="320" width="300" height="160" as="geometry"/>
+    </mxCell>
+
+    <!-- Hub -->
+    <mxCell id="hub-ref" value="Hub VNet (cfs-hub-vnet-swc)" style="swimlane;startSize=25;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=10;fontColor=#7f5f00;" vertex="1" parent="1">
+      <mxGeometry x="420" y="620" width="330" height="150" as="geometry"/>
+    </mxCell>
+    <mxCell id="law-ref" value="Log Analytics WS&#xa;cfs-hub-law-swc&#xa;Receives all Firewall logs" style="shape=mxgraph.azure2.log_analytics;fillColor=#0078D4;strokeColor=#004C8C;fontSize=8;fontColor=#FFFFFF;" vertex="1" parent="hub-ref">
+      <mxGeometry x="100" y="30" width="130" height="80" as="geometry"/>
+    </mxCell>
+
+    <!-- On-prem -->
+    <mxCell id="onprem-tf" value="On-Premises&#xa;172.16.0.0/12&#xa;(BGP via VPN)" style="shape=mxgraph.network.server;fillColor=#f5f5f5;strokeColor=#666666;fontSize=9;" vertex="1" parent="1">
+      <mxGeometry x="30" y="500" width="110" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="vpngw-ref" value="VPN Gateway&#xa;cfs-hub-vpng-swc&#xa;BGP ASN 65515" style="shape=mxgraph.azure2.vpn_gateway;fillColor=#375623;strokeColor=#1e3510;fontSize=8;fontColor=#FFFFFF;" vertex="1" parent="1">
+      <mxGeometry x="200" y="490" width="140" height="90" as="geometry"/>
+    </mxCell>
+
+    <!-- Traffic flow annotations -->
+    <!-- Flow 1: Internet egress from VM -->
+    <mxCell id="flow1-title" value="① Internet Egress (e.g. OS updates, telemetry)" style="text;html=1;fontSize=9;fontColor=#FF8000;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="420" y="85" width="330" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- Flow 2: On-prem connectivity -->
+    <mxCell id="flow2-title" value="② On-Prem Traffic (via VPN → Firewall → Spoke)" style="text;html=1;fontSize=9;fontColor=#375623;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="420" y="108" width="330" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- Flow 3: Cross-spoke (future) -->
+    <mxCell id="flow3-title" value="③ Cross-Spoke (Spoke → Hub FW → Spoke) — Zero direct peering" style="text;html=1;fontSize=9;fontColor=#7030A0;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="420" y="131" width="350" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- Flow 4: Inbound from AFD/AGW -->
+    <mxCell id="flow4-title" value="④ Inbound: AFD → AGW (dedicated subnet, no UDR restriction)" style="text;html=1;fontSize=9;fontColor=#6b0099;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="420" y="154" width="350" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- Edge connections -->
+
+    <!-- VM1 → FW (via UDR) -->
+    <mxCell id="e-vm1-fw" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#FF8000;strokeWidth=2.5;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" source="vm1-tf" target="fw" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="750" y="195"/>
+          <mxPoint x="620" y="195"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e-vm1-fw-lbl" value="① UDR: 0/0 → 10.0.0.4" style="edgeLabel;fontSize=8;fontColor=#FF8000;" vertex="1" connectable="0" parent="e-vm1-fw">
+      <mxGeometry relative="0.5" as="geometry"/>
+    </mxCell>
+
+    <!-- VM2 → FW -->
+    <mxCell id="e-vm2-fw" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#FF8000;strokeWidth=2;" edge="1" source="vm2-tf" target="fw" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="750" y="330"/>
+          <mxPoint x="620" y="330"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- FW → Internet -->
+    <mxCell id="e-fw-inet" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#FF8000;strokeWidth=2.5;startArrow=classic;endArrow=classic;" edge="1" source="fw" target="internet" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e-fw-inet-lbl" value="SNAT to Firewall PIP&#xa;Logs to LAW" style="edgeLabel;fontSize=8;fontColor=#FF8000;" vertex="1" connectable="0" parent="e-fw-inet">
+      <mxGeometry relative="0.5" as="geometry"/>
+    </mxCell>
+
+    <!-- On-prem → VPN GW → FW → Spoke -->
+    <mxCell id="e-onprem-vpn" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#375623;strokeWidth=2;" edge="1" source="onprem-tf" target="vpngw-ref" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e-vpn-fw" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#375623;strokeWidth=2;" edge="1" source="vpngw-ref" target="fw" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e-fw-vm-inbound" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#375623;strokeWidth=1.5;dashed=1;startArrow=classic;endArrow=classic;" edge="1" source="fw" target="vm1-tf" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="620" y="260"/>
+          <mxPoint x="750" y="260"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="e-fw-vm-lbl" value="② On-prem → FW → Spoke" style="edgeLabel;fontSize=8;fontColor=#375623;" vertex="1" connectable="0" parent="e-fw-vm-inbound">
+      <mxGeometry relative="0.5" as="geometry"/>
+    </mxCell>
+
+    <!-- FW → LAW logs -->
+    <mxCell id="e-fw-law" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#0078D4;strokeWidth=1.5;dashed=1;" edge="1" source="fw" target="law-ref" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e-fw-law-lbl" value="All traffic logs&#xa;(AzureFirewallNetworkRule,&#xa;AzureFirewallApplicationRule)" style="edgeLabel;fontSize=8;fontColor=#0078D4;" vertex="1" connectable="0" parent="e-fw-law">
+      <mxGeometry relative="0.5" as="geometry"/>
+    </mxCell>
+
+    <!-- Traffic flow key at bottom -->
+    <mxCell id="flow-key" value="Traffic Flow Key:  ① Internet egress: VM → UDR → Firewall → SNAT → Internet  |  ② Inbound from on-prem: VPN GW → Hub → FW policy → Spoke  |  ③ Note: App Gateway subnet is EXEMPT from UDR (Azure restriction) — AGW manages its own routing" style="rounded=1;fillColor=#F0F0FF;strokeColor=#9999CC;fontSize=8;fontColor=#333366;" vertex="1" parent="1">
+      <mxGeometry x="30" y="790" width="1100" height="30" as="geometry"/>
+    </mxCell>
+  </root>
+</mxGraphModel>
