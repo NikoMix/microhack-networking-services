@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/registry/main/schemas/mcp.schema.json",
+  "//": "MCP servers for the Module B Networking microhack. Works in GitHub Codespaces and local VS Code. No secrets are stored inline — credentials come from env-var/password inputs or Azure CLI / OIDC. All servers are license-free.",
+  "inputs": [
+    {
+      "id": "github-pat",
+      "type": "promptString",
+      "description": "GitHub Personal Access Token (or rely on Codespaces GITHUB_TOKEN). Scopes: repo, read:org, workflow. Used by the GitHub MCP server.",
+      "password": true
+    }
+  ],
+  "servers": {
+    "azure": {
+      "//": "Azure MCP server (license-free, MIT). Provides resource graph, what-if/deploy, pricing, docs, best practices, Well-Architected and Bicep/Terraform AVM tooling. Authenticates with DefaultAzureCredential — run `az login` locally, or rely on the Codespaces/OIDC identity. NEVER store Azure keys here.",
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@azure/mcp@latest", "server", "start"],
+      "env": {
+        "AZURE_SUBSCRIPTION_ID": "${env:AZURE_SUBSCRIPTION_ID}",
+        "AZURE_TENANT_ID": "${env:AZURE_TENANT_ID}"
+      }
+    },
+    "github": {
+      "//": "GitHub remote MCP server (license-free). Drives Issues for control tracking, PRs, and Actions runs. In Codespaces the built-in GITHUB_TOKEN is used automatically; locally, supply a PAT via the github-pat input.",
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${input:github-pat}"
+      }
+    }
+  }
+}

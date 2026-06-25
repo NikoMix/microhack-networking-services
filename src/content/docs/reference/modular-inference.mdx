@@ -1,0 +1,98 @@
+---
+title: Modular inference
+description: Run the microhack's Copilot agents against GitHub Models, Azure OpenAI, or Azure AI Foundry — model-agnostic, license-free, keyless-first — by changing only environment variables.
+sidebar:
+  order: 5
+  label: Modular inference
+---
+
+import { Aside, Steps, Card, CardGrid } from '@astrojs/starlight/components';
+
+The microhack's GitHub Copilot agents are **model-agnostic**. The same agent
+definitions in `.github/agents/` run unchanged against three **license-free**
+inference backends — you only change **environment variables**. No AI application
+is deployed, and **no image generation** is needed, so any text/chat model works.
+
+<Aside type="tip" title="Keyless first">
+For both Azure backends, authenticate with Entra ID via `DefaultAzureCredential`
+(Managed Identity, `az login`, or GitHub Actions **OIDC**). **Never** paste API
+keys into files or committed env vars. Secrets — if ever unavoidable — live only
+in Key Vault.
+</Aside>
+
+## Pick a backend
+
+<CardGrid>
+  <Card title="GitHub Models (default)" icon="seti:github">
+    Zero Azure setup, free rate-limited tier. Perfect in Codespaces, where
+    `GITHUB_TOKEN` already exists.
+  </Card>
+  <Card title="Azure OpenAI" icon="cloud-download">
+    Enterprise SLA, data stays in your tenant and region. Keyless via Entra ID.
+  </Card>
+  <Card title="Azure AI Foundry" icon="puzzle">
+    Model catalog, evaluations, and governance — same OpenAI-compatible code path
+    as Azure OpenAI. Keyless via Entra ID.
+  </Card>
+</CardGrid>
+
+## Configure with environment variables
+
+<Steps>
+
+1. **GitHub Models (default)**
+
+   ```bash
+   export GITHUB_MODELS_ENDPOINT="https://models.github.ai/inference"
+   export GITHUB_TOKEN="<token>"   # Codespaces injects this automatically
+   export MODEL_ID="openai/gpt-4o"
+   ```
+
+2. **Azure OpenAI (keyless)**
+
+   ```bash
+   export AZURE_OPENAI_ENDPOINT="https://<your-aoai>.openai.azure.com/"
+   export AZURE_OPENAI_DEPLOYMENT="gpt-4o"
+   export OPENAI_API_VERSION="2024-10-21"
+   az login   # DefaultAzureCredential — no key
+   ```
+
+   Grant the identity **Cognitive Services OpenAI User** on the resource.
+
+3. **Azure AI Foundry (keyless)**
+
+   ```bash
+   export AZURE_AI_FOUNDRY_PROJECT_ENDPOINT="https://<project>.services.ai.azure.com/api/projects/<project>"
+   export AZURE_AI_FOUNDRY_DEPLOYMENT="gpt-4o"
+   export OPENAI_API_VERSION="2024-10-21"
+   az login   # DefaultAzureCredential — no key
+   ```
+
+   Grant the identity **Azure AI Developer** (or **Cognitive Services OpenAI
+   User**) on the Foundry project.
+
+</Steps>
+
+Copy-pasteable env templates live in
+[`.github/models/`](https://github.com/NikoMix/microhack-networking-services/tree/main/.github/models)
+(`github-models.env.example`, `azure-openai.env.example`,
+`azure-ai-foundry.env.example`) — copy one to `.env` and fill it in.
+
+<Aside type="caution" title="Never commit secrets">
+`.env` files are git-ignored for a reason. Tokens and identities stay local or in
+GitHub/Key Vault secrets — never in the repository.
+</Aside>
+
+## Trade-offs at a glance
+
+| Backend | Cost | Data residency | Governance | Auth |
+|---|---|---|---|---|
+| **GitHub Models** | Free, rate-limited | Shared service | Lightest | `GITHUB_TOKEN` / PAT |
+| **Azure OpenAI** | Pay-per-token | Your tenant/region | Strong | Keyless (Entra ID / OIDC) |
+| **Azure AI Foundry** | Pay-per-token | Your tenant/region | Strongest (catalog + evals) | Keyless (Entra ID / OIDC) |
+
+For CFS, align Azure backends to **`swedencentral`** to match the data-residency
+requirement. None of these backends requires a purchased third-party license.
+
+The authoritative, maintained version of this guidance is
+[`.github/models/README.md`](https://github.com/NikoMix/microhack-networking-services/blob/main/.github/models/README.md).

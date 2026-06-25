@@ -58,3 +58,29 @@ Financial Services (CFS)**, using Copilot agents, skills, and MCP.
 - Run `npm run validate` (astro check + markdownlint) before opening a docs PR.
 - Keep dependencies current and free of known vulnerabilities; only license-free libraries.
 - Comment code only where it clarifies a non-obvious decision.
+
+## Copilot agents & MCP
+
+This repo ships an **apex-style agent system** — an orchestrator plus specialist
+sub-agents and a red-team challenger, with a **human approval gate** at every
+control. Prefer delegating to the most specific agent over doing work inline.
+
+- **Agents** (`.github/agents/*.agent.md`): `network-architect` (orchestrator —
+  start here), `requirements-analyst` (B.1.1), `solution-designer` (B.2.1),
+  `waf-reviewer` (B.2.2), `iac-engineer` (B.3.1 + B.3.2), `validation-engineer`
+  (B.4.1), `evidence-author` (B.4.2), and `challenger` (cross-cutting QA).
+- **Skills** (`.github/prompts/*.prompt.md`): `requirements-capture`,
+  `solution-design`, `waf-review`, `networking-services-selection`,
+  `what-if-review`, `evidence-generation`, `teardown-checklist`,
+  `orchestration-kickoff`. Use them so behaviour stays consistent.
+- **MCP** (`.vscode/mcp.json`): the **Azure MCP** server (keyless,
+  `DefaultAzureCredential`) and the **GitHub MCP** server (Issues for control
+  tracking, PRs, Actions). No secrets are stored inline; credentials come from
+  env-var/password inputs, the Codespaces `GITHUB_TOKEN`, or Azure CLI / OIDC.
+- **Modular inference**: every agent is model-agnostic and runs on **GitHub
+  Models** (default), **Azure OpenAI**, or **Azure AI Foundry** by changing only
+  environment variables — keyless-first, license-free, no image generation. See
+  `.github/models/README.md` and the `reference/modular-inference` page.
+- **Gates**: never cross a human approval gate on the user's behalf, never deploy
+  without an approved `what-if`/`plan`, and always pair a deployment with a
+  working teardown.
