@@ -3,6 +3,16 @@ name: Deploy
 on:
   workflow_dispatch:
     inputs:
+      component:
+        description: "Staged component to deploy (run 'gateway' FIRST — it takes 30-45 min)"
+        type: choice
+        default: all
+        options:
+          - all
+          - gateway
+          - hub
+          - spoke
+          - edge
       location:
         description: "Azure region"
         type: string
@@ -41,23 +51,25 @@ jobs:
       - name: What-if (subscription scope)
         run: |
           az deployment sub what-if \
-            --name "cfs-network-${{ github.run_id }}" \
+            --name "cfs-network-${{ inputs.component }}-${{ github.run_id }}" \
             --location "${{ inputs.location }}" \
             --template-file infra/bicep/main.bicep \
-            --parameters infra/bicep/parameters/lab.bicepparam
+            --parameters infra/bicep/parameters/lab.bicepparam \
+            --parameters deploymentComponent="${{ inputs.component }}"
 
       - name: Deploy
         if: ${{ inputs.whatIfOnly == false }}
         run: |
           az deployment sub create \
-            --name "cfs-network-${{ github.run_id }}" \
+            --name "cfs-network-${{ inputs.component }}-${{ github.run_id }}" \
             --location "${{ inputs.location }}" \
             --template-file infra/bicep/main.bicep \
-            --parameters infra/bicep/parameters/lab.bicepparam
+            --parameters infra/bicep/parameters/lab.bicepparam \
+            --parameters deploymentComponent="${{ inputs.component }}"
 
       - name: Show outputs
         if: ${{ inputs.whatIfOnly == false }}
         run: |
           az deployment sub show \
-            --name "cfs-network-${{ github.run_id }}" \
+            --name "cfs-network-${{ inputs.component }}-${{ github.run_id }}" \
             --query properties.outputs --output jsonc

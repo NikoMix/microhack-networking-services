@@ -122,14 +122,44 @@ three **identifiers** it prints as GitHub Actions secrets. Full guide:
 **Recommended — GitHub Actions** (`Deploy` workflow, `workflow_dispatch`): runs a what-if
 preview, then deploys to the `lab` environment over OIDC. Set `whatIfOnly=true` for a dry run.
 
-**Local** — what-if first, always:
+### Staged, gateway-first deploy (recommended for labs)
+
+The VPN gateway takes **30–45 minutes**, so deploy it **first** and let it provision while you
+stage the rest. The `component` input controls which slice deploys (the hub foundation —
+Log Analytics, hub VNet, Azure Firewall — always deploys so every stage is self-consistent and
+idempotent):
+
+| `component` | Deploys | When |
+| --- | --- | --- |
+| `gateway` | hub VNet + **VPN gateway** (the long pole) | **run FIRST** |
+| `hub` | + Bastion (firewall/hub network already on) | next |
+| `spoke` | spoke VNet + peering + Private Link (KV/Storage) + private VM + internal LB + flow logs | next |
+| `edge` | App Gateway + Front Door (+ spoke VNet for the AppGW subnet) | last |
+| `all` | everything in one deployment (**default**) | single-shot |
+
+```bash
+gh workflow run deploy.yml -f component=gateway   # FIRST — kicks off the 30-45 min gateway
+gh workflow run deploy.yml -f component=hub
+gh workflow run deploy.yml -f component=spoke
+gh workflow run deploy.yml -f component=edge
+# or simply:
+gh workflow run deploy.yml -f component=all
+```
+
+Each stage is an independent, idempotent ARM deployment, so re-running a stage (or `all` after
+staging) is safe. Stages can overlap — start `gateway`, then run `spoke`/`edge` while the
+gateway is still provisioning.
+
+### Local — what-if first, always
 
 ```bash
 # Bicep (primary)
-./infra/scripts/deploy.sh --what-if-only      # preview
-./infra/scripts/deploy.sh                      # deploy
+./infra/scripts/deploy.sh --component gateway      # FIRST (or: all/hub/spoke/edge)
+./infra/scripts/deploy.sh --what-if-only           # preview
+./infra/scripts/deploy.sh                          # full deploy (component=all)
 
 # PowerShell equivalent
+./infra/scripts/deploy.ps1 -Component gateway
 ./infra/scripts/deploy.ps1 -WhatIfOnly
 ./infra/scripts/deploy.ps1
 ```

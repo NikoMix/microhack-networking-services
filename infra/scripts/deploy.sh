@@ -5,6 +5,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPONENT="all"
 LOCATION="swedencentral"
 TEMPLATE_FILE="${SCRIPT_DIR}/../bicep/main.bicep"
 PARAMETER_FILE="${SCRIPT_DIR}/../bicep/parameters/lab.bicepparam"
@@ -12,12 +13,14 @@ DEPLOYMENT_NAME="cfs-network-$(date +%Y%m%d%H%M%S)"
 WHAT_IF_ONLY="false"
 
 usage() {
-  echo "Usage: $0 [-l location] [-p parameter-file] [-t template-file] [--what-if-only]"
+  echo "Usage: $0 [-c component] [-l location] [-p parameter-file] [-t template-file] [--what-if-only]"
+  echo "  component: all (default) | gateway | hub | spoke | edge   (run 'gateway' FIRST)"
   exit 1
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    -c|--component) COMPONENT="$2"; shift 2 ;;
     -l|--location) LOCATION="$2"; shift 2 ;;
     -p|--parameters) PARAMETER_FILE="$2"; shift 2 ;;
     -t|--template) TEMPLATE_FILE="$2"; shift 2 ;;
@@ -37,24 +40,26 @@ az account show --query "{subscription:name,id:id}" --output tsv
 echo "==> Building Bicep template..."
 az bicep build --file "${TEMPLATE_FILE}"
 
-echo "==> Running what-if preview (subscription scope)..."
+echo "==> Running what-if preview (subscription scope, component=${COMPONENT})..."
 az deployment sub what-if \
   --name "${DEPLOYMENT_NAME}" \
   --location "${LOCATION}" \
   --template-file "${TEMPLATE_FILE}" \
-  --parameters "${PARAMETER_FILE}"
+  --parameters "${PARAMETER_FILE}" \
+  --parameters deploymentComponent="${COMPONENT}"
 
 if [[ "${WHAT_IF_ONLY}" == "true" ]]; then
   echo "==> --what-if-only set — stopping before deploy."
   exit 0
 fi
 
-echo "==> Deploying..."
+echo "==> Deploying (component=${COMPONENT})..."
 az deployment sub create \
   --name "${DEPLOYMENT_NAME}" \
   --location "${LOCATION}" \
   --template-file "${TEMPLATE_FILE}" \
   --parameters "${PARAMETER_FILE}" \
+  --parameters deploymentComponent="${COMPONENT}" \
   --output none
 
 echo "==> Deployment complete. Outputs:"

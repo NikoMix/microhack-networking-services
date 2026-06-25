@@ -40,6 +40,22 @@ param deployFrontDoor bool = true
 @description('Deploy Network Watcher + NSG flow logs. Disable if the subscription already owns the regional Network Watcher (one per region).')
 param deployNetworkWatcher bool = true
 
+@description('''Staged deployment selector so pupils can deploy the slow VPN gateway first.
+- all     : full landing zone (default).
+- gateway : hub network + VPN gateway only (the 30-45 min long pole — run this FIRST).
+- hub     : hub network + firewall + bastion + private DNS base.
+- spoke   : spoke network, peering, private PaaS (Key Vault/Storage), private compute + internal LB, flow logs.
+- edge    : spoke network (for the App Gateway subnet) + Application Gateway + Front Door.
+Hub foundation (Log Analytics, hub VNet, Azure Firewall) is always deployed so every stage is self-consistent and idempotent.''')
+@allowed([
+  'all'
+  'gateway'
+  'hub'
+  'spoke'
+  'edge'
+])
+param deploymentComponent string = 'all'
+
 @description('Admin username for the private Linux VM.')
 param adminUsername string = 'cfsadmin'
 
@@ -112,6 +128,15 @@ var spokeSubnets = {
 
 var ilbPrivateIp = '10.1.3.10'
 
+// Staged-deployment gates. Hub foundation (monitoring + hub VNet + firewall) is always on.
+var isAll = deploymentComponent == 'all'
+var doGateway = isAll || deploymentComponent == 'gateway'
+var doHub = isAll || deploymentComponent == 'hub'
+var doSpoke = isAll || deploymentComponent == 'spoke'
+var doEdge = isAll || deploymentComponent == 'edge'
+// The App Gateway lives in the spoke, so the edge stage also needs the spoke network.
+var deploySpokeNetwork = doSpoke || doEdge
+
 // -----------------------------------------------------------------------------
 // Resource groups
 // -----------------------------------------------------------------------------
@@ -180,7 +205,7 @@ module firewall 'modules/firewall.bicep' = {
   }
 }
 
-module bastion 'modules/bastion.bicep' = {
+module bastion 'modules/bastion.bicep' = if (doHub) {
   scope: rgHub
   name: 'dpl-bastion'
   params: {
@@ -192,7 +217,7 @@ module bastion 'modules/bastion.bicep' = {
   }
 }
 
-module vpnGateway 'modules/vpn-gateway.bicep' = if (deployVpnGateway) {
+module vpnGateway 'modules/vpn-gateway.bicep' = if (doGateway && deployVpnGateway) {
   scope: rgHub
   name: 'dpl-vpn-gateway'
   params: {
@@ -207,7 +232,7 @@ module vpnGateway 'modules/vpn-gateway.bicep' = if (deployVpnGateway) {
 // Spoke — workload network (peered to hub, default route to firewall)
 // -----------------------------------------------------------------------------
 
-module spokeNetwork 'modules/spoke-network.bicep' = {
+module spokeNetwork 'modules/spoke-network.bicep' = if (deploySpokeNetwork) {
   scope: rgSpoke
   name: 'dpl-spoke-network'
   params: {
@@ -224,19 +249,19 @@ module spokeNetwork 'modules/spoke-network.bicep' = {
 }
 
 // Bidirectional VNet peering (one peering resource lives in each resource group).
-module peeringHubToSpoke 'modules/peering.bicep' = {
+module peeringHubToSpoke 'modules/peering.bicep' = if (doSpoke) {
   scope: rgHub
   name: 'dpl-peering-hub-to-spoke'
   params: {
     localVnetName: names.hubVnet
-    remoteVnetResourceId: spokeNetwork.outputs.resourceId
+    remoteVnetResourceId: spokeNetwork.?outputs.resourceId ?? ''
     peeringName: 'hub-to-spoke'
     allowGatewayTransit: deployVpnGateway
     useRemoteGateways: false
   }
 }
 
-module peeringSpokeToHub 'modules/peering.bicep' = {
+module peeringSpokeToHub 'modules/peering.bicep' = if (doSpoke) {
   scope: rgSpoke
   name: 'dpl-peering-spoke-to-hub'
   params: {
@@ -252,13 +277,13 @@ module peeringSpokeToHub 'modules/peering.bicep' = {
 // Private DNS — zones for the private PaaS endpoints, linked to both VNets
 // -----------------------------------------------------------------------------
 
-module privateDns 'modules/private-dns.bicep' = {
+module privateDns 'modules/private-dns.bicep' = if (doSpoke) {
   scope: rgSpoke
   name: 'dpl-private-dns'
   params: {
     tags: tags
     hubVnetResourceId: hubNetwork.outputs.resourceId
-    spokeVnetResourceId: spokeNetwork.outputs.resourceId
+    spokeVnetResourceId: spokeNetwork.?outputs.resourceId ?? ''
   }
 }
 
@@ -266,28 +291,28 @@ module privateDns 'modules/private-dns.bicep' = {
 // Private PaaS — Key Vault & Storage, reachable only via Private Endpoints
 // -----------------------------------------------------------------------------
 
-module keyVault 'modules/key-vault.bicep' = {
+module keyVault 'modules/key-vault.bicep' = if (doSpoke) {
   scope: rgSpoke
   name: 'dpl-key-vault'
   params: {
     name: names.keyVault
     location: location
     tags: tags
-    privateEndpointSubnetResourceId: spokeNetwork.outputs.privateEndpointSubnetResourceId
-    privateDnsZoneResourceId: privateDns.outputs.keyVaultZoneResourceId
+    privateEndpointSubnetResourceId: spokeNetwork.?outputs.privateEndpointSubnetResourceId ?? ''
+    privateDnsZoneResourceId: privateDns.?outputs.keyVaultZoneResourceId ?? ''
     logAnalyticsWorkspaceResourceId: monitoring.outputs.resourceId
   }
 }
 
-module storage 'modules/storage.bicep' = {
+module storage 'modules/storage.bicep' = if (doSpoke) {
   scope: rgSpoke
   name: 'dpl-storage'
   params: {
     name: names.storage
     location: location
     tags: tags
-    privateEndpointSubnetResourceId: spokeNetwork.outputs.privateEndpointSubnetResourceId
-    blobPrivateDnsZoneResourceId: privateDns.outputs.blobZoneResourceId
+    privateEndpointSubnetResourceId: spokeNetwork.?outputs.privateEndpointSubnetResourceId ?? ''
+    blobPrivateDnsZoneResourceId: privateDns.?outputs.blobZoneResourceId ?? ''
   }
 }
 
@@ -295,19 +320,19 @@ module storage 'modules/storage.bicep' = {
 // Private compute + internal load balancer
 // -----------------------------------------------------------------------------
 
-module loadBalancer 'modules/load-balancer.bicep' = {
+module loadBalancer 'modules/load-balancer.bicep' = if (doSpoke) {
   scope: rgSpoke
   name: 'dpl-load-balancer'
   params: {
     name: names.ilb
     location: location
     tags: tags
-    subnetResourceId: spokeNetwork.outputs.loadBalancerSubnetResourceId
+    subnetResourceId: spokeNetwork.?outputs.loadBalancerSubnetResourceId ?? ''
     privateIpAddress: ilbPrivateIp
   }
 }
 
-module compute 'modules/compute.bicep' = {
+module compute 'modules/compute.bicep' = if (doSpoke) {
   scope: rgSpoke
   name: 'dpl-compute'
   params: {
@@ -317,7 +342,7 @@ module compute 'modules/compute.bicep' = {
     adminUsername: adminUsername
     adminSshPublicKey: adminSshPublicKey
     vmSize: vmSize
-    subnetResourceId: spokeNetwork.outputs.workloadSubnetResourceId
+    subnetResourceId: spokeNetwork.?outputs.workloadSubnetResourceId ?? ''
   }
 }
 
@@ -325,7 +350,7 @@ module compute 'modules/compute.bicep' = {
 // Application Gateway + WAF (regional L7 ingress to the spoke)
 // -----------------------------------------------------------------------------
 
-module appGateway 'modules/app-gateway.bicep' = {
+module appGateway 'modules/app-gateway.bicep' = if (doEdge) {
   scope: rgSpoke
   name: 'dpl-app-gateway'
   params: {
@@ -333,7 +358,7 @@ module appGateway 'modules/app-gateway.bicep' = {
     wafPolicyName: names.appGwWafPolicy
     location: location
     tags: tags
-    subnetResourceId: spokeNetwork.outputs.appGatewaySubnetResourceId
+    subnetResourceId: spokeNetwork.?outputs.appGatewaySubnetResourceId ?? ''
     backendIpAddress: ilbPrivateIp
     logAnalyticsWorkspaceResourceId: monitoring.outputs.resourceId
   }
@@ -343,14 +368,14 @@ module appGateway 'modules/app-gateway.bicep' = {
 // Azure Front Door + WAF (global secure delivery)
 // -----------------------------------------------------------------------------
 
-module frontDoor 'modules/front-door.bicep' = if (deployFrontDoor) {
+module frontDoor 'modules/front-door.bicep' = if (doEdge && deployFrontDoor) {
   scope: rgSpoke
   name: 'dpl-front-door'
   params: {
     name: names.frontDoor
     wafPolicyName: names.frontDoorWafPolicy
     tags: tags
-    originHostName: appGateway.outputs.frontendFqdn
+    originHostName: appGateway.?outputs.frontendFqdn ?? ''
     logAnalyticsWorkspaceResourceId: monitoring.outputs.resourceId
   }
 }
@@ -359,14 +384,14 @@ module frontDoor 'modules/front-door.bicep' = if (deployFrontDoor) {
 // Observability — Network Watcher + NSG flow logs
 // -----------------------------------------------------------------------------
 
-module flowLogs 'modules/network-watcher.bicep' = if (deployNetworkWatcher) {
+module flowLogs 'modules/network-watcher.bicep' = if (doSpoke && deployNetworkWatcher) {
   scope: rgMgmt
   name: 'dpl-network-watcher'
   params: {
     location: location
     tags: tags
     flowLogsStorageName: names.flowLogsStorage
-    targetNsgResourceId: spokeNetwork.outputs.workloadNsgResourceId
+    targetNsgResourceId: spokeNetwork.?outputs.workloadNsgResourceId ?? ''
     logAnalyticsWorkspaceResourceId: monitoring.outputs.resourceId
   }
 }
@@ -411,10 +436,10 @@ output hubResourceGroupName string = rgHub.name
 output spokeResourceGroupName string = rgSpoke.name
 output mgmtResourceGroupName string = rgMgmt.name
 output hubVnetResourceId string = hubNetwork.outputs.resourceId
-output spokeVnetResourceId string = spokeNetwork.outputs.resourceId
+output spokeVnetResourceId string = spokeNetwork.?outputs.resourceId ?? ''
 output firewallPrivateIp string = firewall.outputs.privateIp
 output logAnalyticsWorkspaceResourceId string = monitoring.outputs.resourceId
-output keyVaultResourceId string = keyVault.outputs.resourceId
-output storageAccountResourceId string = storage.outputs.resourceId
-output applicationGatewayFqdn string = appGateway.outputs.frontendFqdn
-output frontDoorEndpointHostName string = deployFrontDoor ? (frontDoor.?outputs.endpointHostName ?? '') : ''
+output keyVaultResourceId string = keyVault.?outputs.resourceId ?? ''
+output storageAccountResourceId string = storage.?outputs.resourceId ?? ''
+output applicationGatewayFqdn string = appGateway.?outputs.frontendFqdn ?? ''
+output frontDoorEndpointHostName string = (doEdge && deployFrontDoor) ? (frontDoor.?outputs.endpointHostName ?? '') : ''
