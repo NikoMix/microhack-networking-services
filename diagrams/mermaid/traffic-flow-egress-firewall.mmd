@@ -1,0 +1,68 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#FF8000', 'primaryTextColor': '#FFFFFF', 'primaryBorderColor': '#CC5500', 'lineColor': '#FF8000'}}}%%
+
+flowchart TB
+  internet["🌐 Internet"]
+
+  subgraph azure["Azure — swedencentral"]
+
+    subgraph hub["Hub VNet (cfs-hub-vnet-swc)"]
+
+      fw["🔥 Azure Firewall<br/>cfs-hub-fw-swc<br/>Private: 10.0.0.4<br/>SNAT → Public IP<br/>All traffic inspected"]
+
+      fwpol["📋 Firewall Policy<br/>cfs-hub-fwpol-swc<br/>─────────────────<br/>Net P100: DNS UDP:53 ✅<br/>Net P200: BGP TCP:179 ✅<br/>App P300: *.azure.com ✅<br/>App P300: *.ubuntu.com ✅<br/>Default: DENY ALL ❌"]
+
+      vpngw["🔗 VPN Gateway<br/>10.0.2.x"]
+      law["📊 Log Analytics<br/>cfs-hub-law-swc<br/>(receives all FW logs)"]
+    end
+
+    subgraph spoke["Workload Spoke (cfs-app-vnet-swc)"]
+
+      subgraph udr_subnet["AppSubnet + ILBSubnet + PESubnet<br/>UDR: 0.0.0.0/0 → 10.0.0.4 (Firewall)"]
+        vm1["💻 VM-001<br/>10.1.0.10"]
+        vm2["💻 VM-002<br/>10.1.0.11"]
+        pe["🔒 Private Endpoints<br/>KV | Storage | SQL"]
+      end
+
+      subgraph exempt["AppGatewaySubnet (EXEMPT from UDR)"]
+        agw["🛡️ App Gateway<br/>cfs-app-agw-swc<br/>(manages own routing)"]
+      end
+
+    end
+  end
+
+  onprem["🏢 On-Premises<br/>172.16.0.0/12"]
+
+  %% Flow 1: Egress from VMs
+  vm1 -->|"① Spoke egress<br/>via UDR"| fw
+  vm2 -->|"① Spoke egress<br/>via UDR"| fw
+  fw -->|"① SNAT → PIP<br/>If rule ALLOWS"| internet
+  fw -->|"① BLOCKED<br/>If rule DENIES"| internet
+
+  %% Flow 2: Hybrid
+  onprem <-->|"② IKEv2 VPN"| vpngw
+  vpngw <-->|"② Hub route"| fw
+  fw <-->|"② Inspected<br/>+ routed to spoke"| vm1
+
+  %% Flow 3: Inbound via AGW (not through FW)
+  internet -->|"④ Inbound<br/>(AFD→AGW)"| agw
+  agw -->|"④ To ILB→VMs<br/>(internal)"| vm1
+
+  %% Policy attached
+  fw --- fwpol
+
+  %% Logging
+  fw -->|"All traffic logged"| law
+
+  %% Styles
+  style fw fill:#FF8000,color:#FFFFFF,stroke:#CC5500
+  style fwpol fill:#FFF2CC,color:#7F3F00,stroke:#D6B656
+  style vpngw fill:#375623,color:#FFFFFF,stroke:#1e3510
+  style law fill:#0078D4,color:#FFFFFF,stroke:#004C8C
+  style vm1 fill:#1a5e20,color:#FFFFFF,stroke:#0d3b10
+  style vm2 fill:#1a5e20,color:#FFFFFF,stroke:#0d3b10
+  style pe fill:#C00000,color:#FFFFFF,stroke:#7B0000
+  style agw fill:#6b0099,color:#FFFFFF,stroke:#430060
+  style hub fill:#FFF9E6,stroke:#D6B656
+  style spoke fill:#DAE8FC,stroke:#0070C0
+  style udr_subnet fill:#D5E8D4,stroke:#82B366
+  style exempt fill:#F3E5FF,stroke:#9B59B6

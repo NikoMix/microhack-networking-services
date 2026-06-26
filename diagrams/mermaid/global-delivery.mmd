@@ -1,0 +1,60 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#00AA00', 'primaryTextColor': '#FFFFFF', 'primaryBorderColor': '#007700', 'lineColor': '#333333'}}}%%
+
+flowchart LR
+  subgraph users["🌍 Global Users"]
+    eu["EU User<br/>(Stockholm)"]
+    us["US User<br/>(New York)"]
+    apac["APAC User<br/>(Singapore)"]
+  end
+
+  subgraph afd_layer["Global Edge (Azure Front Door Standard)"]
+    afd["Azure Front Door<br/>cfs-edge-afd-swc<br/>Global Anycast PoP<br/>HTTPS only<br/>HTTP → HTTPS redirect"]
+    afd_waf["WAF Policy<br/>Prevention mode<br/>Microsoft_DefaultRuleSet 2.1<br/>OWASP 3.2"]
+  end
+
+  subgraph agw_layer["App Gateway v2 + WAF (swedencentral)"]
+    agw["App Gateway<br/>cfs-app-agw-swc<br/>WAF_v2 SKU | Zones 1,2,3<br/>WAF: Prevention mode<br/>TLS: 1.2 minimum"]
+    agw_waf["WAF Policy<br/>OWASP 3.2<br/>Prevention mode"]
+  end
+
+  subgraph backend["Backend Compute (AppSubnet — No Public IPs)"]
+    ilb["Internal Load Balancer<br/>cfs-app-ilb-swc<br/>Frontend: 10.1.3.4"]
+    vm1["VM-001<br/>Zone 1"]
+    vm2["VM-002<br/>Zone 2"]
+    vm3["VM-003<br/>Zone 3"]
+  end
+
+  subgraph fw_layer["Egress Control"]
+    fw["Azure Firewall<br/>All egress via UDR"]
+  end
+
+  %% Traffic path
+  eu -->|"HTTPS:443"| afd
+  us -->|"HTTPS:443"| afd
+  apac -->|"HTTPS:443"| afd
+  afd --- afd_waf
+  afd -->|"HTTPS origin request"| agw
+  agw --- agw_waf
+  agw -->|"HTTP to ILB"| ilb
+  ilb -->|"Load balanced"| vm1
+  ilb -->|"Load balanced"| vm2
+  ilb -->|"Load balanced"| vm3
+  vm1 -->|"UDR egress"| fw
+  vm2 -->|"UDR egress"| fw
+  vm3 -->|"UDR egress"| fw
+
+  %% Styles
+  style afd fill:#00AA00,color:#FFFFFF,stroke:#007700
+  style afd_waf fill:#CC0000,color:#FFFFFF,stroke:#990000
+  style agw fill:#6b0099,color:#FFFFFF,stroke:#430060
+  style agw_waf fill:#CC0000,color:#FFFFFF,stroke:#990000
+  style ilb fill:#0f5132,color:#FFFFFF,stroke:#0a3622
+  style vm1 fill:#1a5e20,color:#FFFFFF,stroke:#0d3b10
+  style vm2 fill:#1a5e20,color:#FFFFFF,stroke:#0d3b10
+  style vm3 fill:#1a5e20,color:#FFFFFF,stroke:#0d3b10
+  style fw fill:#FF8000,color:#FFFFFF,stroke:#CC5500
+  style users fill:#E6F3FF,stroke:#0070C0
+  style afd_layer fill:#E1F5E1,stroke:#00AA00
+  style agw_layer fill:#F3E5FF,stroke:#9B59B6
+  style backend fill:#D5E8D4,stroke:#82B366
+  style fw_layer fill:#FFE6B3,stroke:#FF8000

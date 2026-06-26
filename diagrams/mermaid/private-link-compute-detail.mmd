@@ -1,0 +1,70 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#C00000', 'primaryTextColor': '#FFFFFF', 'primaryBorderColor': '#7B0000', 'lineColor': '#333333'}}}%%
+
+flowchart LR
+  subgraph spoke["cfs-app-vnet-swc — Workload Spoke"]
+
+    subgraph app["AppSubnet (10.1.0.0/24)"]
+      vm1["💻 VM-001<br/>10.1.0.10<br/>NO PUBLIC IP<br/>Managed Identity"]
+      vm2["💻 VM-002<br/>10.1.0.11<br/>NO PUBLIC IP<br/>Managed Identity"]
+    end
+
+    subgraph pe_sub["PrivateEndpointSubnet (10.1.1.0/24)"]
+      pe_kv["🔐 PE-KeyVault<br/>NIC: 10.1.1.4"]
+      pe_sa["📦 PE-StorageBlob<br/>NIC: 10.1.1.5"]
+      pe_sql["🗄️ PE-SQL<br/>NIC: 10.1.1.6"]
+    end
+
+  end
+
+  subgraph paas["PaaS Services (Public Endpoint: DISABLED)"]
+    kv_svc["Key Vault<br/>cfs-hub-kv-swc<br/>publicNetworkAccess=Disabled"]
+    sa_svc["Storage Account<br/>cfs-app-sa-swc<br/>publicNetworkAccess=Disabled"]
+    sql_svc["Azure SQL<br/>cfs-app-sql-swc<br/>publicNetworkAccess=Disabled"]
+  end
+
+  subgraph dns["Private DNS Zones (Global, linked all VNets)"]
+    dns_kv["privatelink.vaultcore.azure.net<br/>→ 10.1.1.4"]
+    dns_sa["privatelink.blob.core.windows.net<br/>→ 10.1.1.5"]
+    dns_sql["privatelink.database.windows.net<br/>→ 10.1.1.6"]
+  end
+
+  blocked["❌ Public Internet<br/>(Returns HTTP 403)"]
+
+  %% VM to PE connections (private only)
+  vm1 -->|"HTTPS:443 via private IP"| pe_kv
+  vm1 -->|"HTTPS:443 via private IP"| pe_sa
+  vm2 -->|"HTTPS:1433 via private IP"| pe_sql
+
+  %% PE to PaaS service (Microsoft backbone)
+  pe_kv -->|"Microsoft backbone"| kv_svc
+  pe_sa -->|"Microsoft backbone"| sa_svc
+  pe_sql -->|"Microsoft backbone"| sql_svc
+
+  %% DNS resolution
+  dns_kv -.->|"Resolves to"| pe_kv
+  dns_sa -.->|"Resolves to"| pe_sa
+  dns_sql -.->|"Resolves to"| pe_sql
+
+  %% Public blocked
+  blocked -->|"BLOCKED ❌"| kv_svc
+  blocked -->|"BLOCKED ❌"| sa_svc
+  blocked -->|"BLOCKED ❌"| sql_svc
+
+  %% Styles
+  style vm1 fill:#1a5e20,color:#FFFFFF,stroke:#0d3b10
+  style vm2 fill:#1a5e20,color:#FFFFFF,stroke:#0d3b10
+  style pe_kv fill:#C00000,color:#FFFFFF,stroke:#7B0000
+  style pe_sa fill:#0070C0,color:#FFFFFF,stroke:#004C8C
+  style pe_sql fill:#CC0000,color:#FFFFFF,stroke:#990000
+  style kv_svc fill:#C00000,color:#FFFFFF,stroke:#7B0000
+  style sa_svc fill:#0070C0,color:#FFFFFF,stroke:#004C8C
+  style sql_svc fill:#CC0000,color:#FFFFFF,stroke:#990000
+  style blocked fill:#fce4d6,color:#CC0000,stroke:#CC0000
+  style dns_kv fill:#FFF2CC,color:#7F5F00,stroke:#D6B656
+  style dns_sa fill:#FFF2CC,color:#7F5F00,stroke:#D6B656
+  style dns_sql fill:#FFF2CC,color:#7F5F00,stroke:#D6B656
+  style app fill:#D5E8D4,stroke:#82B366
+  style pe_sub fill:#FFE6CC,stroke:#D79B00
+  style spoke fill:#DAE8FC,stroke:#0070C0
+  style paas fill:#FCE4D6,stroke:#CC0000
+  style dns fill:#FFF2CC,stroke:#D6B656
