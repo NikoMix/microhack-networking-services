@@ -21,7 +21,7 @@ jobs:
     name: Bicep build & lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Install Bicep CLI
         run: az bicep install
       - name: Bicep build (restores AVM modules + lints)
@@ -41,8 +41,8 @@ jobs:
     name: Terraform fmt & validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.13.1"
       - name: terraform fmt -check
@@ -56,8 +56,8 @@ jobs:
     name: Policy scan (Checkov, license-free)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install Checkov (CI-only, not a repo dependency)
