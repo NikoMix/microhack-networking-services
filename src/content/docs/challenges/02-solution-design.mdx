@@ -12,7 +12,7 @@ import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/
   <Card title="Duration" icon="clock">75 minutes</Card>
   <Card title="Module B controls" icon="approve-check">**B.2.1** Solution Design · **B.2.2** Well-Architected Review</Card>
   <Card title="Agents" icon="seti:github">`solution-designer` · `waf-reviewer` · `challenger`</Card>
-  <Card title="Evidence artifacts" icon="document">`B2.1_SolutionDesign_CFS_v1.docx` · `B2.2_WellArchitectedReview_CFS_v1.docx`</Card>
+  <Card title="Evidence artifacts" icon="document">`B2.1_SolutionDesign_CFS_v1.docx` · `B2.2_WellArchitectedReview_CFS_v1.xlsx`</Card>
 </CardGrid>
 
 ## Objectives
@@ -55,8 +55,8 @@ even though they describe the same CFS solution.
 | `solution-designer` | `.github/agents/solution-designer.agent.md` | Produces the HLD covering all ALZ design areas |
 | `waf-reviewer` | `.github/agents/waf-reviewer.agent.md` | Conducts the Well-Architected Review |
 | `challenger` | `.github/agents/challenger.agent.md` | Reviews both documents for completeness |
-| Skill: `b21-solution-design.prompt.md` | `.github/prompts/b21-solution-design.prompt.md` | HLD structure and ALZ design area prompts |
-| Skill: `b22-waf-review.prompt.md` | `.github/prompts/b22-waf-review.prompt.md` | WAF pillar questions and scoring |
+| Skill: `solution-design.prompt.md` | `.github/prompts/solution-design.prompt.md` | HLD structure and ALZ design area prompts |
+| Skill: `waf-review.prompt.md` | `.github/prompts/waf-review.prompt.md` | WAF pillar questions and scoring |
 
 ## MCP tools used
 
@@ -162,7 +162,7 @@ Resource naming: `cfs-[role]-[type]-swc` · Region: `swedencentral` · Environme
    Are recommendations actionable with concrete Azure service references?
    ```
 
-6. **Populate `B2.2_WellArchitectedReview_CFS_v1.docx`** using the evidence template.
+6. **Populate `B2.2_WellArchitectedReview_CFS_v1.xlsx`** using the evidence template.
 </Steps>
 
 ## Validation checklist
@@ -183,7 +183,7 @@ Resource naming: `cfs-[role]-[type]-swc` · Region: `swedencentral` · Environme
 | Control | Artifact | Template |
 |---|---|---|
 | B.2.1 | `B2.1_SolutionDesign_CFS_v1.docx` | `evidence-templates/B2.1_SolutionDesign_CFS_v1.docx` |
-| B.2.2 | `B2.2_WellArchitectedReview_CFS_v1.docx` | `evidence-templates/B2.2_WellArchitectedReview_CFS_v1.docx` |
+| B.2.2 | `B2.2_WellArchitectedReview_CFS_v1.xlsx` | `evidence-templates/B2.2_WellArchitectedReview_CFS_v1.xlsx` |
 
 ## Cost estimate
 

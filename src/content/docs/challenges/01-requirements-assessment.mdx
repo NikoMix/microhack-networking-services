@@ -12,7 +12,7 @@ import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/
   <Card title="Duration" icon="clock">45 minutes</Card>
   <Card title="Module B control" icon="approve-check">**B.1.1** Requirements Assessment</Card>
   <Card title="Agent" icon="seti:github">`.github/agents/requirements-analyst.agent.md`</Card>
-  <Card title="Evidence artifact" icon="document">`B1.1_RequirementsAssessment_CFS_v1.docx`</Card>
+  <Card title="Evidence artifact" icon="document">`B1.1_RequirementsAssessment_CFS_v1.xlsx`</Card>
 </CardGrid>
 
 ## Objective
@@ -34,7 +34,7 @@ explicit networking requirements, and a customer signature or acknowledgement.
 
 <Aside type="tip" title="One control, one artifact">
 A single B1.1 document covers the entire B.1.1 control. Fill in the
-`evidence-templates/B1.1_RequirementsAssessment_CFS_v1.docx` template with the agent output
+`evidence-templates/B1.1_RequirementsAssessment_CFS_v1.xlsx` template with the agent output
 and your own review notes.
 </Aside>
 
@@ -44,7 +44,7 @@ and your own review notes.
 |---|---|---|
 | `requirements-analyst` | `.github/agents/requirements-analyst.agent.md` | Drives structured discovery and produces the assessment draft |
 | `challenger` | `.github/agents/challenger.agent.md` | Reviews the draft for gaps and pushes back on assumptions |
-| Skill: `b11-requirements.prompt.md` | `.github/prompts/b11-requirements.prompt.md` | 8-topic-area prompt template |
+| Skill: `requirements-capture.prompt.md` | `.github/prompts/requirements-capture.prompt.md` | 8-topic-area prompt template |
 
 ## MCP tools used
 
@@ -92,7 +92,7 @@ Key facts to hold in mind during assessment:
    - Identity and access model (Entra ID, PIM, break-glass)
 
 5. **Populate the evidence template** — copy the finalised assessment content into
-   `evidence-templates/B1.1_RequirementsAssessment_CFS_v1.docx`:
+   `evidence-templates/B1.1_RequirementsAssessment_CFS_v1.xlsx`:
    ```
    @evidence-author Populate the B1.1 template from the finalised requirements assessment.
    Output as structured markdown so I can paste into the Word template.
@@ -127,13 +127,13 @@ The agent structures discovery around these areas — verify all eight appear in
 | Hybrid connectivity requirements explicitly call out branch VPN + ER design | Section 6 |
 | Security requirements reference PSD2 and zero-public-PaaS | Section 5 |
 | Document has reviewer name and date | Document header |
-| Template `B1.1_RequirementsAssessment_CFS_v1.docx` is filled in | `evidence-templates/` |
+| Template `B1.1_RequirementsAssessment_CFS_v1.xlsx` is filled in | `evidence-templates/` |
 
 ## Evidence artifact
 
 | Artifact | Template location | Naming convention |
 |---|---|---|
-| Requirements Assessment | `evidence-templates/B1.1_RequirementsAssessment_CFS_v1.docx` | `B1.1_RequirementsAssessment_CFS_v1.docx` |
+| Requirements Assessment | `evidence-templates/B1.1_RequirementsAssessment_CFS_v1.xlsx` | `B1.1_RequirementsAssessment_CFS_v1.xlsx` |
 
 The filled-in document satisfies **B.1.1** in the audit.
 

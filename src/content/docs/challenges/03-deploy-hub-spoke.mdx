@@ -12,7 +12,7 @@ import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/
   <Card title="Duration" icon="clock">90 minutes</Card>
   <Card title="Module B controls" icon="approve-check">**B.3.1** Scenario Implementation · **B.3.2** ≥5 native networking services</Card>
   <Card title="Agent" icon="seti:github">`iac-engineer` · `challenger`</Card>
-  <Card title="Evidence artifacts" icon="document">`B3.1_ImplementationPlan_CFS_v1.docx` · `B3.2_ServiceEvidence_CFS_v1.docx`</Card>
+  <Card title="Evidence artifacts" icon="document">`B3.x_AsBuilt_CFS_v1.docx` (B.3.1 + B.3.2)</Card>
 </CardGrid>
 
 <Aside type="danger" title="🚀 START THE GATEWAY DEPLOYMENT FIRST — before reading anything else">
@@ -63,7 +63,7 @@ Application Gateway + WAF, Azure Front Door + WAF, and Azure Load Balancer (tota
 |---|---|---|
 | `iac-engineer` | `.github/agents/iac-engineer.agent.md` | Reviews/adjusts Bicep parameters and validates `what-if` output |
 | `challenger` | `.github/agents/challenger.agent.md` | Reviews deployment plan for security gaps |
-| Skill: `b31-deploy.prompt.md` | `.github/prompts/b31-deploy.prompt.md` | Deployment workflow prompts |
+| Skill: `what-if-review.prompt.md` | `.github/prompts/what-if-review.prompt.md` | Safe what-if preview + human-approval gate before deploy |
 
 ## IaC reference
 
@@ -71,10 +71,13 @@ All Bicep lives under `infra/bicep/`. The GitHub Actions workflow is `.github/wo
 
 | Module | Resource | Location |
 |---|---|---|
-| `infra/bicep/hub/main.bicep` | Hub VNet, Firewall, Bastion, route tables | `infra/bicep/hub/` |
-| `infra/bicep/hub/gateway.bicep` | VPN / VWAN Gateway | `infra/bicep/hub/` |
-| `infra/bicep/spoke/main.bicep` | App spoke VNet, NSGs | `infra/bicep/spoke/` |
-| `infra/bicep/main.bicep` | Top-level orchestration | `infra/bicep/` |
+| `infra/bicep/modules/hub-network.bicep` | Hub VNet + subnets | `infra/bicep/modules/` |
+| `infra/bicep/modules/firewall.bicep` | Azure Firewall Premium + policy, route tables | `infra/bicep/modules/` |
+| `infra/bicep/modules/bastion.bicep` | Azure Bastion | `infra/bicep/modules/` |
+| `infra/bicep/modules/vpn-gateway.bicep` | VPN Gateway | `infra/bicep/modules/` |
+| `infra/bicep/modules/spoke-network.bicep` | App spoke VNet + subnets + NSGs | `infra/bicep/modules/` |
+| `infra/bicep/modules/peering.bicep` | Hub ↔ spoke VNet peering | `infra/bicep/modules/` |
+| `infra/bicep/main.bicep` | Top-level orchestration (component flags) | `infra/bicep/` |
 
 Parameters file: `infra/bicep/parameters/lab.bicepparam` — do not hardcode values here.
 
@@ -100,10 +103,10 @@ Parameters file: `infra/bicep/parameters/lab.bicepparam` — do not hardcode val
    ```
 2. Open `infra/bicep/parameters/lab.bicepparam` and confirm:
    - `location = 'swedencentral'`
-   - `hubVnetName = 'cfs-hub-vnet-swc'`
-   - `firewallName = 'cfs-hub-afw-swc'`
-   - `bastionName = 'cfs-hub-bas-swc'`
-   - `tags = { environment: 'lab', workload: 'cfs' }`
+   - `namePrefix = 'cfs'` and `regionToken = 'swc'` — resource names compose to `cfs-<role>-<type>-swc`
+   - `environmentName = 'lab'`
+   - `deployVpnGateway = true`
+   - `adminSshPublicKey` is set to your OpenSSH public key (required to deploy the private VM in Challenge 04)
 3. Run `what-if` validation:
    ```bash
    az deployment sub what-if \
@@ -201,7 +204,7 @@ and come back here once `gh run watch` shows the gateway run as **completed**.
 <Steps>
 1. Generate the implementation plan artifact:
    ```
-   @evidence-author Generate B3.1_ImplementationPlan_CFS_v1.docx content based on
+   @evidence-author Generate B3.x_AsBuilt_CFS_v1.docx content based on
    the hub deployment. Include: deployed resources, address spaces, service selection
    rationale, and the gateway provisioning timeline.
    ```
@@ -212,8 +215,8 @@ and come back here once `gh run watch` shows the gateway run as **completed**.
    with their resource names, resource groups, and service purpose for the B.3.2 artifact.
    ```
 
-3. Fill in `evidence-templates/B3.1_ImplementationPlan_CFS_v1.docx` and
-   `evidence-templates/B3.2_ServiceEvidence_CFS_v1.docx`.
+3. Fill in `evidence-templates/B3.x_AsBuilt_CFS_v1.docx` — this single as-built
+   document captures both the B.3.1 implementation and the B.3.2 service inventory.
 </Steps>
 
 ## Services deployed in this challenge
@@ -243,8 +246,7 @@ Challenge 04 adds: Private Link, App Gateway + WAF, Front Door + WAF → total �
 
 | Control | Artifact | Template |
 |---|---|---|
-| B.3.1 | `B3.1_ImplementationPlan_CFS_v1.docx` | `evidence-templates/B3.1_ImplementationPlan_CFS_v1.docx` |
-| B.3.2 (partial) | `B3.2_ServiceEvidence_CFS_v1.docx` | `evidence-templates/B3.2_ServiceEvidence_CFS_v1.docx` |
+| B.3.1 + B.3.2 (partial) | `B3.x_AsBuilt_CFS_v1.docx` | `evidence-templates/B3.x_AsBuilt_CFS_v1.docx` |
 
 ## Cost estimate
 

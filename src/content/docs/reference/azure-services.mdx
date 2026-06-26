@@ -68,7 +68,7 @@ The "Why for CFS" column maps directly to the requirements from B.1.1.
 | Attribute | Detail |
 |---|---|
 | **What it is** | Private Link brings Azure PaaS services onto your VNet using a private IP. Private Endpoints are the network interface that connects to a Private Link resource. |
-| **CFS resource names** | `pe-kv-swc` (Key Vault), `pe-st-swc` (Storage), `pe-sql-swc` (SQL) |
+| **CFS resource names** | `pe-kv-swc` (Key Vault), `pe-st-swc` (Storage) |
 | **Why for CFS** | PSD2 and CFS policy require zero public PaaS exposure. Private Endpoints combined with `publicNetworkAccess: Disabled` on the PaaS resource ensure all traffic stays on the private network. |
 | **Module B controls** | B.3.1, B.3.2 (Service 5), B.4.1 (tested) |
 | **Key config for lab** | Private DNS Zones: one per service type, VNet-linked to spoke · `publicNetworkAccess: Disabled` on all target resources · NSG on PE subnet optional but recommended |
@@ -114,7 +114,7 @@ The "Why for CFS" column maps directly to the requirements from B.1.1.
 | **What it is** | Dedicated private connectivity from on-premises to Azure via a connectivity provider, bypassing the public internet |
 | **Why for CFS** | CFS's data centre requires dedicated 1 Gbps connectivity for latency-sensitive workloads and data transfer |
 | **Why design-only** | An ExpressRoute circuit + gateway costs €200+/month — not appropriate for a 1-day lab |
-| **Evidence location** | Documented in `B2.1_SolutionDesign_CFS_v1.docx` (ALZ Connectivity section, ADR-06) and called out in `B3.2_ServiceEvidence_CFS_v1.docx` as design-only |
+| **Evidence location** | Documented in `B2.1_SolutionDesign_CFS_v1.docx` (ALZ Connectivity section, ADR-06) and called out in `B3.x_AsBuilt_CFS_v1.docx` as design-only |
 | **Audit note** | The audit accepts design documentation for services not deployed due to cost constraints, provided the design is documented and the rationale is noted |
 
 ## Service deployment timing
