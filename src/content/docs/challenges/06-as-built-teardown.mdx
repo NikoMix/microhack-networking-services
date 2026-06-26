@@ -81,7 +81,7 @@ from the original HLD. The agent queries your Azure environment to generate this
 3. Cross-check the as-built against the actual Azure resources:
    ```bash
    az resource list -g rg-cfs-hub-swc -o table
-   az resource list -g rg-cfs-app-swc -o table
+   az resource list -g rg-cfs-spoke-swc -o table
    ```
 
 4. Identify and document any **deviations** from the Challenge 02 HLD (e.g., if you used
@@ -200,8 +200,7 @@ is your backstop, but it does not automatically delete resources.
 
 3. The teardown workflow deletes all CFS resource groups:
    - `rg-cfs-hub-swc`
-   - `rg-cfs-app-swc`
-   - `rg-cfs-global-swc` (Front Door profile)
+   - `rg-cfs-spoke-swc`
    - Any budget/alert definitions
 
 4. **Verify all resources are deleted**:

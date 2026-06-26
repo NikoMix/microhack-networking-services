@@ -19,7 +19,7 @@ have completed their test execution and are ready for the sign-off step.
 |---|---|---|---|
 | TC-01 | Hub to spoke routing via Firewall | Ping succeeds; Firewall logs show `Action: Allow` | UDR not applied to spoke subnet |
 | TC-02 | Inter-spoke isolation | Direct spoke-to-spoke traffic blocked; must route via hub Firewall | Spoke peering allows direct traffic (check `allowForwardedTraffic`) |
-| TC-03 | Private DNS resolution | `nslookup` returns `10.1.3.x`; not a public IP | DNS zone VNet link missing |
+| TC-03 | Private DNS resolution | `nslookup` returns `10.1.1.x`; not a public IP | DNS zone VNet link missing |
 | TC-04 | No public access to Key Vault | HTTP 403 from outside VNet | Public network access still enabled on KV |
 | TC-05 | Bastion is only admin path | Direct SSH/RDP from internet times out | VM has no public IP — expected timeout is a pass |
 | TC-06 | WAF blocks XSS payload | HTTP 403 from Front Door WAF | WAF in Detection mode (not Prevention) |
@@ -52,8 +52,8 @@ A passing Connection Monitor result for the hub-to-spoke test group:
 {
   "testGroups": [{
     "name": "hub-to-spoke",
-    "sources": [{ "resourceId": "/subscriptions/.../cfs-hub-vm-swc" }],
-    "destinations": [{ "address": "10.1.4.4" }],
+    "sources": [{ "resourceId": "/subscriptions/.../<hub-test-vm-id>" }],
+    "destinations": [{ "address": "10.1.0.4" }],
     "testConfigurations": [{
       "protocol": "Tcp",
       "successThresholdChecksFailedPercent": 0,

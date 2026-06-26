@@ -77,6 +77,22 @@ password. The deploy workflow (`deploy.yml`) and teardown workflow (`teardown.ym
 `azure/login@v2` with OIDC.
 </Aside>
 
+<Aside type="tip" title="Fastest path — the bootstrap script">
+The repo ships an idempotent helper that does steps 1–4 in one shot (app
+registration, an `environment:lab` federated credential, role assignments) and
+prints the three secret values:
+
+```bash
+# bash
+./infra/scripts/oidc-bootstrap.sh --environment lab
+# PowerShell
+./infra/scripts/oidc-bootstrap.ps1 -Environment lab
+```
+
+Prefer to do it by hand? Follow the manual steps below — they produce the exact
+same result.
+</Aside>
+
 <Steps>
 1. **Create the Entra ID app registration** (one per pupil):
    ```bash
@@ -84,15 +100,15 @@ password. The deploy workflow (`deploy.yml`) and teardown workflow (`teardown.ym
    SP_OBJ=$(az ad sp create --id $APP_ID --query id -o tsv)
    echo "App ID: $APP_ID"
    ```
-2. **Add the federated credential** for the `main` branch:
+2. **Add the federated credential** for the `lab` environment (this is the subject the deploy/teardown jobs present, because they run `environment: lab`):
    ```bash
    REPO="<your-github-org-or-user>/microhack-networking-services"
    az ad app federated-credential create \
      --id $APP_ID \
      --parameters "{
-       \"name\":\"github-actions-main\",
+       \"name\":\"github-actions-lab\",
        \"issuer\":\"https://token.actions.githubusercontent.com\",
-       \"subject\":\"repo:${REPO}:ref:refs/heads/main\",
+       \"subject\":\"repo:${REPO}:environment:lab\",
        \"audiences\":[\"api://AzureADTokenExchange\"]
      }"
    ```
@@ -112,11 +128,19 @@ password. The deploy workflow (`deploy.yml`) and teardown workflow (`teardown.ym
    | `AZURE_TENANT_ID` | `az account show --query tenantId -o tsv` |
    | `AZURE_SUBSCRIPTION_ID` | `az account show --query id -o tsv` |
 
-5. Verify by running the **validate** workflow:
+5. **Create the `lab` environment** in GitHub: repo **Settings → Environments → New environment → `lab`**. The deploy and teardown workflows run in this environment — it is what the federated credential subject (`environment:lab`) matches.
+
+6. Validate the IaC templates compile (no Azure login required):
    ```bash
-   gh workflow run validate.yml
+   gh workflow run validate-infra.yml
    gh run watch
    ```
+   <Aside type="note" title="When is OIDC actually exercised?">
+   `validate-infra.yml` only lints Bicep/Terraform — it never logs in to Azure. Your
+   federated credential is first exercised by the **what-if** preview deploy in
+   Challenge 03 (`deploy.yml` with `whatIfOnly=true`). If that step authenticates,
+   OIDC is wired correctly.
+   </Aside>
 </Steps>
 
 ## Part C — Verify the Copilot agents and MCP
@@ -151,7 +175,7 @@ Set the budget alert now so it is in place for all resource deployments in Chall
      --time-grain Monthly \
      --start-date "$(date +%Y-%m-01)" \
      --end-date "$(date -d '+12 months' +%Y-%m-01)" \
-     --resource-group-filter "rg-cfs-hub-swc" "rg-cfs-app-swc" \
+     --resource-group-filter "rg-cfs-hub-swc" "rg-cfs-spoke-swc" \
      --notifications "{
        \"actual_GreaterThan_80_Percent\":{
          \"enabled\":true,
@@ -173,7 +197,8 @@ Before moving on, verify all items below are green:
 |---|---|
 | Codespace is running with Node 24 and Azure CLI | `node -v && az version` |
 | `npm run dev` serves the docs site on port 4321 | Browser preview |
-| OIDC validate workflow passes | `gh run list --workflow validate.yml` |
+| IaC `validate-infra.yml` workflow passes | `gh run list --workflow validate-infra.yml` |
+| `lab` environment exists for OIDC deploys | Repository → Settings → Environments |
 | All 3 GitHub Actions secrets are set | Repository → Settings → Secrets |
 | Budget alert is visible in Cost Management | Azure Portal |
 | `@network-architect` agent responds in Copilot Chat | VS Code Copilot Chat |

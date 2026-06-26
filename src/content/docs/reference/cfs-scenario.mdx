@@ -167,16 +167,15 @@ The Bicep `location` parameter defaults to `swedencentral`.
 
 | Subnet | CIDR | Purpose |
 |---|---|---|
-| AzureFirewallSubnet | `10.0.1.0/26` | Azure Firewall (required name) |
-| AzureBastionSubnet | `10.0.2.0/26` | Azure Bastion (required name, min /26) |
-| GatewaySubnet | `10.0.3.0/27` | VPN/ER Gateway (required name) |
-| RouteServerSubnet | `10.0.4.0/27` | Azure Route Server (optional) |
+| AzureFirewallSubnet | `10.0.0.0/26` | Azure Firewall (required name) |
+| AzureBastionSubnet | `10.0.1.0/26` | Azure Bastion (required name, min /26) |
+| GatewaySubnet | `10.0.2.0/27` | VPN/ER Gateway (required name) |
 
 ### App spoke subnet layout
 
 | Subnet | CIDR | Purpose |
 |---|---|---|
-| snet-app | `10.1.1.0/24` | General workload |
+| snet-workload | `10.1.0.0/24` | Private compute (no public IPs) |
 | snet-appgw | `10.1.2.0/24` | Application Gateway (dedicated subnet) |
-| snet-pe | `10.1.3.0/24` | Private Endpoints |
-| snet-compute | `10.1.4.0/24` | Private compute (no public IPs) |
+| snet-pe | `10.1.1.0/24` | Private Endpoints |
+| snet-lb | `10.1.3.0/24` | Internal Load Balancer |

@@ -20,20 +20,19 @@ have submitted both artifacts.
 ```
 Hub VNet: cfs-hub-vnet-swc (10.0.0.0/16)
   Subnets:
-    AzureFirewallSubnet         10.0.1.0/26
-    AzureBastionSubnet          10.0.2.0/26
-    GatewaySubnet               10.0.3.0/27
-    RouteServerSubnet           10.0.4.0/27
+    AzureFirewallSubnet         10.0.0.0/26
+    AzureBastionSubnet          10.0.1.0/26
+    GatewaySubnet               10.0.2.0/27
 
 Spoke VNet: cfs-app-vnet-swc (10.1.0.0/16)
   Subnets:
-    snet-app                    10.1.1.0/24
+    snet-workload               10.1.0.0/24  (private compute, no public IPs)
     snet-appgw                  10.1.2.0/24  (App Gateway dedicated)
-    snet-pe                     10.1.3.0/24  (Private Endpoints)
-    snet-compute                10.1.4.0/24  (Private compute)
+    snet-pe                     10.1.1.0/24  (Private Endpoints)
+    snet-lb                     10.1.3.0/24  (internal Load Balancer)
 
 VNet Peering: Hub ↔ Spoke (allow-gateway-transit: hub; use-remote-gateway: spoke)
-UDR on spoke subnets: 0.0.0.0/0 → cfs-hub-afw-swc private IP (10.0.1.4)
+UDR on snet-workload + snet-lb: 0.0.0.0/0 → cfs-hub-afw-swc private IP (10.0.0.4)
 ```
 
 ### ALZ design areas — reference answers

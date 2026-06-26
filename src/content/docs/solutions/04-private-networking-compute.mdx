@@ -19,16 +19,15 @@ After correct deployment, DNS lookup from inside the spoke VNet should return pr
 
 | Service | FQDN | Expected IP range |
 |---|---|---|
-| Key Vault | `cfs-kv-swc.vault.azure.net` | `10.1.3.x` |
-| Storage | `cfsstswc.blob.core.windows.net` | `10.1.3.x` |
-| SQL | `cfs-sql-swc.database.windows.net` | `10.1.3.x` |
+| Key Vault | `cfs-kv-swc.vault.azure.net` | `10.1.1.x` |
+| Storage | `cfsstswc.blob.core.windows.net` | `10.1.1.x` |
 
 If DNS returns a public IP (e.g. `52.x.x.x`), the Private DNS Zone is not linked to the VNet.
 Fix: add a VNet link on `privatelink.vaultcore.azure.net` for `cfs-app-vnet-swc`.
 
 ```bash
 az network private-dns link vnet create \
-  --resource-group rg-cfs-app-swc \
+  --resource-group rg-cfs-spoke-swc \
   --zone-name privatelink.vaultcore.azure.net \
   --name cfs-app-vnet-link \
   --virtual-network cfs-app-vnet-swc \
@@ -39,7 +38,7 @@ az network private-dns link vnet create \
 
 ```bash
 az network application-gateway waf-config show \
-  --gateway-name cfs-app-agw-swc -g rg-cfs-app-swc \
+  --gateway-name cfs-app-agw-swc -g rg-cfs-spoke-swc \
   --query '{firewallMode:firewallMode, ruleSetType:ruleSetType, ruleSetVersion:ruleSetVersion, requestBodyCheck:requestBodyCheck}' -o json
 # Expected:
 # { "firewallMode": "Prevention", "ruleSetType": "OWASP", "ruleSetVersion": "3.2", "requestBodyCheck": true }
@@ -57,12 +56,12 @@ directly, bypassing the WAF. The correct configuration:
 ```bash
 # Check pending Private Link approvals on App Gateway
 az network application-gateway private-link-resource list \
-  --gateway-name cfs-app-agw-swc -g rg-cfs-app-swc -o table
+  --gateway-name cfs-app-agw-swc -g rg-cfs-spoke-swc -o table
 
 # Approve Front Door's Private Link connection
 az network private-endpoint-connection approve \
   --resource-name cfs-app-agw-swc \
-  --resource-group rg-cfs-app-swc \
+  --resource-group rg-cfs-spoke-swc \
   --type Microsoft.Network/applicationGateways \
   --name <connection-name>
 ```
@@ -74,11 +73,11 @@ az network private-endpoint-connection approve \
 | 1 | Virtual Network + VNet Peering | `cfs-hub-vnet-swc`, `cfs-app-vnet-swc` | hub, app | Secure network infrastructure |
 | 2 | Azure Firewall Premium | `cfs-hub-afw-swc` | hub | Secure network infrastructure |
 | 3 | Azure Bastion Standard | `cfs-hub-bas-swc` | hub | Secure network infrastructure |
-| 4 | VPN Gateway | `cfs-hub-gw-swc` | hub | On-prem/branch connectivity |
+| 4 | VPN Gateway | `cfs-hub-vpngw-swc` | hub | On-prem/branch connectivity |
 | 5 | Private Link / Private Endpoints | `pe-kv-swc`, `pe-st-swc` | app | Secure network infrastructure |
 | 6 | Azure Load Balancer (Internal) | `cfs-app-ilb-swc` | app | Secure network infrastructure |
 | 7 | Application Gateway + WAF v2 | `cfs-app-agw-swc` | app | Secure global app delivery |
-| 8 | Azure Front Door Premium + WAF | `cfs-afd-profile` | global | Secure global app delivery |
+| 8 | Azure Front Door Premium + WAF | `cfs-edge-afd-swc` | global | Secure global app delivery |
 
 Note: ExpressRoute is documented as design-only in ADR-06. This is explicitly called out
 in the B.3.2 artifact and is acceptable — the 8 deployed services far exceed the ≥5 minimum.

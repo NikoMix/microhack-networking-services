@@ -18,7 +18,7 @@ after they have completed Challenge 00.
 | Item | Expected value |
 |---|---|
 | Codespace status | Running, Node 24 + Azure CLI 2.65+ |
-| OIDC validate workflow | `completed` (green) |
+| IaC validate workflow (`validate-infra.yml`) | `completed` (green) |
 | GitHub Actions secrets | All 3 set: CLIENT_ID, TENANT_ID, SUBSCRIPTION_ID |
 | Budget alert | Visible in Cost Management, threshold 80%, email set |
 | Docs preview | Port 4321 responding, site loads |
@@ -28,7 +28,7 @@ after they have completed Challenge 00.
 
 | Pitfall | Symptom | Fix |
 |---|---|---|
-| OIDC subject mismatch | validate.yml fails with 401 | Check federated credential subject matches exact branch/repo format |
+| OIDC subject mismatch | `deploy.yml` what-if fails with `AADSTS700213` / "No matching federated identity record" | Federated credential subject must be exactly `repo:<org>/<repo>:environment:lab`, and the `lab` environment must exist |
 | Wrong subscription selected | Resources deploy to wrong subscription | `az account set --subscription <ID>` before any CLI commands |
 | Port 4321 not forwarded | Docs site unreachable | VS Code Ports tab → right-click 4321 → Make Public (if needed) |
 | Agent not responding | `@network-architect` shows no reply | Check `.github/agents/` folder exists; reload Copilot extension |
@@ -38,21 +38,23 @@ after they have completed Challenge 00.
 
 ```json
 {
-  "name": "github-actions-main",
+  "name": "github-actions-lab",
   "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:NikoMix/microhack-networking-services:ref:refs/heads/main",
+  "subject": "repo:NikoMix/microhack-networking-services:environment:lab",
   "audiences": ["api://AzureADTokenExchange"]
 }
 ```
 
-For environment-scoped deployments, the subject format is:
-`repo:[org]/[repo]:environment:[env-name]`
+This is environment-scoped (`repo:[org]/[repo]:environment:[env-name]`) because the
+`deploy.yml` and `teardown.yml` jobs declare `environment: lab`. A branch-scoped
+subject (`ref:refs/heads/main`) would **not** match and the deploy login would fail.
+The `oidc-bootstrap.sh --environment lab` helper sets this subject automatically.
 
 ## Grading hints
 
 - **Pass**: All 6 validation checklist items are green, budget alert confirmed, agent responds.
 - **Partial pass**: OIDC works but budget alert missing — acceptable for progressing; note the gap.
-- **Fail**: validate.yml is red — do not proceed to Challenge 01 until OIDC is working.
+- **Fail**: `validate-infra.yml` is red, or the Challenge 03 what-if deploy cannot authenticate — resolve OIDC/IaC before proceeding to Challenge 01.
 
 ## Trainer note — model configuration
 

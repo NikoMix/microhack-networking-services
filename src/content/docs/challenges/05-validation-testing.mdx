@@ -138,7 +138,7 @@ The test plan covers all four security layers of the CFS deployment:
        {
          "name": "hub-to-spoke",
          "sources": [{"resourceId": "<hub-vm-id>", "type": "AzureVM"}],
-         "destinations": [{"address": "10.1.4.4", "type": "IPAddress"}],
+         "destinations": [{"address": "10.1.0.4", "type": "IPAddress"}],
          "testConfigurations": [{"name":"tcp-80","protocol":"Tcp","tcpConfiguration":{"port":80}}]
        }
      ]'
@@ -149,7 +149,7 @@ The test plan covers all four security layers of the CFS deployment:
    **TC-01: Hub to spoke routing via Firewall**
    ```bash
    # From a hub VM (via Bastion), ping the spoke compute private IP
-   ping 10.1.4.4 -c 4
+   ping 10.1.0.4 -c 4
    # Expected: success (Firewall allows)
    ```
 
