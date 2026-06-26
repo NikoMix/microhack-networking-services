@@ -1,0 +1,4 @@
+# Compiled ARM artifacts from `az bicep build` — generated, never committed.
+*.json
+# Keep parameter files (.bicepparam) and any intentional JSON allow-listed below.
+!parameters/*.json
