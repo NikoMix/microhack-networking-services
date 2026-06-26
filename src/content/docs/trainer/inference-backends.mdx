@@ -1,0 +1,111 @@
+---
+title: Inference backends
+description: Trainer guidance for running the Copilot agents against GitHub Models, Azure OpenAI, or Azure AI Foundry — which backend to use in the classroom and how to demonstrate switching live by changing only environment variables.
+sidebar:
+  order: 3
+  label: Inference backends
+---
+
+import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+
+The agents are **model-agnostic**. The same files in `.github/agents/` run
+unchanged against three license-free backends — you change only **environment
+variables**. This page is the trainer's quick decision guide and a live-demo
+script. The authoritative configuration reference is
+[Modular inference](../../reference/modular-inference/).
+
+<Aside type="tip" title="Classroom default: GitHub Models">
+In a Codespace, `GITHUB_TOKEN` already exists, so **GitHub Models** needs zero
+setup and zero Azure cost. Use it as the default for the room and switch to an
+Azure backend only when you want to make a data-residency or governance point.
+</Aside>
+
+## Which backend, when
+
+<CardGrid>
+  <Card title="GitHub Models" icon="seti:github">
+    **Use for the classroom.** Free, rate-limited, instant in Codespaces. No Azure
+    setup. The right choice for almost every delivery.
+  </Card>
+  <Card title="Azure OpenAI" icon="cloud-download">
+    **Use to make the residency point.** Data stays in the customer tenant and
+    region. Keyless via Entra ID. Worth a short demo for regulated audiences.
+  </Card>
+  <Card title="Azure AI Foundry" icon="puzzle">
+    **Use for governance depth.** Adds the model catalog and evaluations on the
+    same OpenAI-compatible code path. Good for an advanced or two-day cohort.
+  </Card>
+</CardGrid>
+
+## Demo: switch backends live in two minutes
+
+A high-impact moment — pupils see that the *agent* never changes, only its fuel.
+
+<Steps>
+
+1. **Start on GitHub Models.** Run any agent prompt and point out it is using the
+   Codespace `GITHUB_TOKEN`.
+
+2. **Open the env templates** in `.github/models/` so pupils see the three
+   `*.env.example` files side by side.
+
+3. **Copy the Azure OpenAI template** to `.env`, fill in the endpoint and
+   deployment, and `az login` for keyless auth — no API key anywhere.
+
+4. **Re-run the exact same agent prompt.** Same agent, same skill, same output
+   shape — different backend. That is the whole lesson about portability.
+
+5. **Reset** to GitHub Models for the rest of the day to avoid Azure token spend.
+
+</Steps>
+
+## The configuration in brief
+
+Full copy-pasteable templates live in
+[`.github/models/`](https://github.com/NikoMix/microhack-networking-services/tree/main/.github/models).
+The shapes are:
+
+<Tabs>
+  <TabItem label="GitHub Models">
+    ```bash
+    export GITHUB_MODELS_ENDPOINT="https://models.github.ai/inference"
+    export GITHUB_TOKEN="<token>"   # Codespaces injects this automatically
+    export MODEL_ID="openai/gpt-4o"
+    ```
+  </TabItem>
+  <TabItem label="Azure OpenAI">
+    ```bash
+    export AZURE_OPENAI_ENDPOINT="https://<your-aoai>.openai.azure.com/"
+    export AZURE_OPENAI_DEPLOYMENT="gpt-4o"
+    export OPENAI_API_VERSION="2024-10-21"
+    az login   # DefaultAzureCredential — no key
+    ```
+  </TabItem>
+  <TabItem label="Azure AI Foundry">
+    ```bash
+    export AZURE_AI_FOUNDRY_PROJECT_ENDPOINT="https://<project>.services.ai.azure.com/api/projects/<project>"
+    export AZURE_AI_FOUNDRY_DEPLOYMENT="gpt-4o"
+    export OPENAI_API_VERSION="2024-10-21"
+    az login   # DefaultAzureCredential — no key
+    ```
+  </TabItem>
+</Tabs>
+
+<Aside type="caution" title="Keyless first, secrets never committed">
+For both Azure backends, authenticate with Entra ID via `DefaultAzureCredential`
+(Managed Identity, `az login`, or Actions **OIDC**). `.env` files are git-ignored.
+Never paste API keys into files or commit them — if a secret is truly unavoidable,
+it lives only in Key Vault.
+</Aside>
+
+## Talking points for pupils
+
+- **No AI app is deployed.** Modular inference applies to the *agents and MCP
+  config*, not to a hosted application. There is nothing to bill for the agents
+  beyond the inference tokens.
+- **No image generation is required**, so any text or chat model works — pupils
+  are free to substitute an equivalent model their organisation prefers.
+- **License-free.** None of the three backends requires a purchased third-party
+  license, which matches the microhack's licensing constraint.
+- **Residency.** For CFS, align Azure backends to `swedencentral` so the inference
+  path honours the same data-residency requirement as the workload.

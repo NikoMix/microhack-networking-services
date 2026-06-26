@@ -15,7 +15,7 @@
     "preview": "astro preview",
     "check": "astro check",
     "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#dist\"",
-    "slides": "marp slides --html --allow-local-files -o dist-slides",
+    "slides": "marp --input-dir slides --output dist-slides --html --allow-local-files",
     "validate": "npm run check && npm run lint:md"
   },
   "dependencies": {
