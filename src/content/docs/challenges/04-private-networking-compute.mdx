@@ -40,11 +40,11 @@ Services after Challenge 04:
 | 1 | Virtual Network + VNet Peering | `cfs-hub-vnet-swc`, `cfs-app-vnet-swc` |
 | 2 | Azure Firewall Premium | `cfs-hub-afw-swc` |
 | 3 | Azure Bastion Standard | `cfs-hub-bas-swc` |
-| 4 | VPN Gateway (or Azure Virtual WAN) | `cfs-hub-gw-swc` |
+| 4 | VPN Gateway (or Azure Virtual WAN) | `cfs-hub-vpngw-swc` |
 | 5 | Private Link / Private Endpoints | `pe-kv-swc`, `pe-st-swc` |
 | 6 | Azure Load Balancer (Internal) | `cfs-app-ilb-swc` |
 | 7 | Application Gateway + WAF v2 | `cfs-app-agw-swc` |
-| 8 | Azure Front Door Premium + WAF | `cfs-afd-profile` |
+| 8 | Azure Front Door Premium + WAF | `cfs-edge-afd-swc` |
 
 **Total: 8 services** — well above the ≥5 required.
 
@@ -93,7 +93,7 @@ single run.
 
 2. Confirm the private endpoints exist (deployed by the `spoke` component in Challenge 03):
    ```bash
-   az network private-endpoint list -g rg-cfs-app-swc -o table
+   az network private-endpoint list -g rg-cfs-spoke-swc -o table
    # Expected: a private endpoint for Key Vault and one for Storage
    ```
 
@@ -118,8 +118,8 @@ single run.
 <Steps>
 1. Confirm the private VM was deployed by the `spoke` component (Challenge 03) and has no public IP:
    ```bash
-   az vm list -g rg-cfs-app-swc -o table
-   az network public-ip list -g rg-cfs-app-swc -o table
+   az vm list -g rg-cfs-spoke-swc -o table
+   az network public-ip list -g rg-cfs-spoke-swc -o table
    # Expected: no public IPs in the spoke resource group
    ```
 
@@ -141,7 +141,7 @@ single run.
 
 2. Verify the Load Balancer (deployed by the `spoke` component in Challenge 03):
    ```bash
-   az network lb show -n cfs-app-ilb-swc -g rg-cfs-app-swc \
+   az network lb show -n cfs-app-ilb-swc -g rg-cfs-spoke-swc \
      --query '{sku:sku.name, frontendIp:frontendIPConfigurations[0].privateIPAddress}' -o json
    ```
 </Steps>
@@ -177,7 +177,7 @@ Premium + WAF in a single run. You verify the App Gateway here in Part D and Fro
 4. Verify the App Gateway WAF policy is in Prevention mode:
    ```bash
    az network application-gateway waf-config show \
-     --gateway-name cfs-app-agw-swc -g rg-cfs-app-swc \
+     --gateway-name cfs-app-agw-swc -g rg-cfs-spoke-swc \
      --query '{firewallMode:firewallMode, ruleSetType:ruleSetType, ruleSetVersion:ruleSetVersion}' -o json
    # Expected: firewallMode: Prevention, ruleSetVersion: 3.2
    ```
@@ -194,9 +194,9 @@ This part verifies it end to end.
 1. Test end-to-end delivery:
    ```bash
    AFD_ENDPOINT=$(az afd endpoint show \
-     --profile-name cfs-afd-profile \
-     --endpoint-name cfs-app-endpoint \
-     -g rg-cfs-app-swc \
+     --profile-name cfs-edge-afd-swc \
+     --endpoint-name cfs-edge-afd-swc-ep \
+     -g rg-cfs-spoke-swc \
      --query hostName -o tsv)
    curl -I "https://${AFD_ENDPOINT}"
    # Expected: HTTP 200 or 301 from the Application Gateway backend
@@ -205,7 +205,7 @@ This part verifies it end to end.
 2. Verify the WAF policy is active on Front Door:
    ```bash
    az afd security-policy list \
-     --profile-name cfs-afd-profile -g rg-cfs-app-swc -o table
+     --profile-name cfs-edge-afd-swc -g rg-cfs-spoke-swc -o table
    ```
 </Steps>
 
@@ -232,10 +232,10 @@ This part verifies it end to end.
 
 | Check | Command / Portal |
 |---|---|
-| Private Endpoints exist for Key Vault and Storage | `az network private-endpoint list -g rg-cfs-app-swc -o table` |
+| Private Endpoints exist for Key Vault and Storage | `az network private-endpoint list -g rg-cfs-spoke-swc -o table` |
 | DNS resolves KV/Storage to private IPs | `nslookup` from within VNet |
 | No public network access on KV/Storage | `az keyvault show` / `az storage account show` |
-| No compute VMs have public IPs | `az network public-ip list -g rg-cfs-app-swc` |
+| No compute VMs have public IPs | `az network public-ip list -g rg-cfs-spoke-swc` |
 | Internal Load Balancer is Standard SKU | `az network lb show` |
 | App Gateway WAF in Prevention mode, CRS 3.2 | `az network application-gateway waf-config show` |
 | Front Door Premium WAF policy active | `az afd security-policy list` |

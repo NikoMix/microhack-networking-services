@@ -20,16 +20,16 @@ The table below shows the expected values for a standard lab deployment.
 
 | Resource | RG | SKU/Tier | Private IP | Public IP | Notes |
 |---|---|---|---|---|---|
-| `cfs-hub-vnet-swc` | hub | N/A | 10.0.0.0/16 | — | 4 subnets |
+| `cfs-hub-vnet-swc` | hub | N/A | 10.0.0.0/16 | — | 3 subnets |
 | `cfs-app-vnet-swc` | app | N/A | 10.1.0.0/16 | — | 4 subnets |
-| `cfs-hub-afw-swc` | hub | Premium | 10.0.1.4 | Dynamic (PIP) | IDPS Deny |
-| `cfs-hub-bas-swc` | hub | Standard | 10.0.2.5 | Dynamic (PIP) | IP-based connection enabled |
-| `cfs-hub-gw-swc` | hub | VpnGw1 | 10.0.3.4 | Dynamic (PIP x2) | Active-passive |
-| `cfs-app-agw-swc` | app | WAF_v2 | 10.1.2.5 | Dynamic (PIP) | Prevention, CRS 3.2 |
-| `cfs-afd-profile` | global | Premium | — | Anycast | Private Link origin |
-| `pe-kv-swc` | app | — | 10.1.3.4 | — | privatelink.vaultcore.azure.net |
-| `pe-st-swc` | app | — | 10.1.3.5 | — | privatelink.blob.core.windows.net |
-| `cfs-app-ilb-swc` | app | Standard | 10.1.4.100 | — | Internal only |
+| `cfs-hub-afw-swc` | hub | Premium | 10.0.0.4 | Dynamic (PIP) | IDPS Deny |
+| `cfs-hub-bas-swc` | hub | Standard | 10.0.1.4 | Dynamic (PIP) | IP-based connection enabled |
+| `cfs-hub-vpngw-swc` | hub | VpnGw1 | 10.0.2.4 | Dynamic (PIP x2) | Active-passive |
+| `cfs-app-agw-swc` | app | WAF_v2 | 10.1.2.5 | Static (PIP) | Prevention, CRS 3.2 |
+| `cfs-edge-afd-swc` | app | Premium | — | Anycast | Private Link origin |
+| `pe-kv-swc` | app | — | 10.1.1.4 | — | privatelink.vaultcore.azure.net |
+| `pe-st-swc` | app | — | 10.1.1.5 | — | privatelink.blob.core.windows.net |
+| `cfs-app-ilb-swc` | app | Standard | 10.1.3.10 | — | Internal only |
 
 ## Reference decision log (6 entries minimum)
 

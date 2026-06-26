@@ -33,7 +33,7 @@ Deploy the four core hub networking resources for CFS to your Azure subscription
 1. **Hub VNet** (`cfs-hub-vnet-swc`) with spoke peering
 2. **Azure Firewall Premium** (`cfs-hub-afw-swc`) — central egress and segmentation
 3. **Azure Bastion Standard** (`cfs-hub-bas-swc`) — private admin access, no public IPs on compute
-4. **VPN / Virtual WAN Gateway** (`cfs-hub-gw-swc`) — hybrid connectivity to branches
+4. **VPN / Virtual WAN Gateway** (`cfs-hub-vpngw-swc`) — hybrid connectivity to branches
 
 This challenge satisfies **B.3.1** (scenario implementation) and starts evidence for
 **B.3.2** (≥5 native Azure networking services). Challenge 04 completes the B.3.2 service count.
@@ -147,14 +147,14 @@ Parameters file: `infra/bicep/parameters/lab.bicepparam` — do not hardcode val
    az network firewall list -g rg-cfs-hub-swc -o table
    az network bastion list -g rg-cfs-hub-swc -o table
    ```
-
-4. Confirm routing: the hub route table should force all spoke traffic through the Firewall:
-   ```bash
-   az network route-table route list \
-     --route-table-name cfs-hub-rt-swc -g rg-cfs-hub-swc -o table
-   ```
-   The default route `0.0.0.0/0` should point to the Firewall private IP.
 </Steps>
+
+<Aside type="note" title="Where is the route table?">
+The hub VNet has **no** route table — central egress is enforced by a User-Defined
+Route on the **spoke** subnets (`snet-workload` + `snet-lb`), which you verify in
+Part C after the spoke deploys. Forcing `0.0.0.0/0 → Firewall` at the spoke keeps
+the hub clean and lets each spoke opt in to inspection independently.
+</Aside>
 
 ## Part C — Deploy the spoke and configure VNet peering
 
@@ -169,14 +169,14 @@ Parameters file: `infra/bicep/parameters/lab.bicepparam` — do not hardcode val
    az network vnet peering list \
      --vnet-name cfs-hub-vnet-swc -g rg-cfs-hub-swc -o table
    az network vnet peering list \
-     --vnet-name cfs-app-vnet-swc -g rg-cfs-app-swc -o table
+     --vnet-name cfs-app-vnet-swc -g rg-cfs-spoke-swc -o table
    ```
    Both peerings should show state `Connected`.
 
 3. Confirm the spoke route table forces egress through the hub Firewall (User-Defined Route):
    ```bash
    az network route-table route list \
-     --route-table-name cfs-app-rt-swc -g rg-cfs-app-swc -o table
+     --route-table-name cfs-app-vnet-swc-rt -g rg-cfs-spoke-swc -o table
    ```
 </Steps>
 
@@ -191,7 +191,7 @@ and come back here once `gh run watch` shows the gateway run as **completed**.
 1. Verify the VPN gateway is provisioned:
    ```bash
    az network vnet-gateway show \
-     -n cfs-hub-gw-swc -g rg-cfs-hub-swc \
+     -n cfs-hub-vpngw-swc -g rg-cfs-hub-swc \
      --query '{name:name, provisioningState:provisioningState, sku:sku.name}' -o json
    ```
    Expected: `provisioningState: Succeeded`.
@@ -226,7 +226,7 @@ and come back here once `gh run watch` shows the gateway run as **completed**.
 | Virtual Network + VNet Peering | `cfs-hub-vnet-swc`, `cfs-app-vnet-swc` | ✅ Service 1 |
 | Azure Firewall Premium | `cfs-hub-afw-swc` | ✅ Service 2 |
 | Azure Bastion Standard | `cfs-hub-bas-swc` | ✅ Service 3 |
-| VPN Gateway (or Azure Virtual WAN) | `cfs-hub-gw-swc` | ✅ Service 4 |
+| VPN Gateway (or Azure Virtual WAN) | `cfs-hub-vpngw-swc` | ✅ Service 4 |
 
 Challenge 04 adds: Private Link, App Gateway + WAF, Front Door + WAF → total ≥7 services.
 

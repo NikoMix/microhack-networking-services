@@ -18,13 +18,13 @@ with pupils until after Challenge 03 is complete.
 ```bash
 # Resource groups
 rg-cfs-hub-swc    (Sweden Central)
-rg-cfs-app-swc    (Sweden Central)
+rg-cfs-spoke-swc    (Sweden Central)
 
 # Hub resources
 cfs-hub-vnet-swc       VirtualNetwork  10.0.0.0/16
 cfs-hub-afw-swc        AzureFirewall   Premium SKU, IDPS Alert+Deny
 cfs-hub-bas-swc        BastionHost     Standard SKU
-cfs-hub-gw-swc         VirtualNetworkGateway  VpnGw1 or VpnGw2
+cfs-hub-vpngw-swc         VirtualNetworkGateway  VpnGw1 or VpnGw2
 
 # Spoke resources
 cfs-app-vnet-swc       VirtualNetwork  10.1.0.0/16
@@ -34,8 +34,7 @@ cfs-hub-vnet-swc/cfs-hub-to-app    Connected
 cfs-app-vnet-swc/cfs-app-to-hub    Connected
 
 # Route tables
-cfs-hub-rt-swc   applied to GatewaySubnet  (no default route override)
-cfs-app-rt-swc   applied to snet-app, snet-compute  0.0.0.0/0 → 10.0.1.4 (Firewall)
+cfs-app-vnet-swc-rt   applied to snet-workload, snet-lb  0.0.0.0/0 → 10.0.0.4 (Firewall)
 ```
 
 ## What-if output — expected changes
