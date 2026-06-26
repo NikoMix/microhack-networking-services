@@ -1,0 +1,187 @@
+---
+title: Reset and troubleshooting
+description: Recovery runbook for the Module B microhack — recover a stuck gateway, fix OIDC and quota failures, re-run a single deploy stage or a whole challenge, and tear everything down cleanly with the DELETE confirm token.
+sidebar:
+  order: 4
+  label: Reset & troubleshooting
+---
+
+import { Aside, Steps, Card, CardGrid } from '@astrojs/starlight/components';
+
+When a real deployment misbehaves mid-class, you need the fix in seconds, not a
+debugging session. This runbook lists the interventions you will actually reach
+for, with exact commands. Keep it open during Challenges 03–06.
+
+<Aside type="note" title="Deploy and teardown interface">
+Deployments run through `deploy.yml` (input `component`:
+`gateway` · `hub` · `spoke` · `edge` · `all`, plus `whatIfOnly` and `location`).
+Teardown runs through `teardown.yml` and requires the confirm token `DELETE`.
+The hub foundation deploys with every stage, so re-running any single stage is
+safe and idempotent.
+</Aside>
+
+## Fast triage table
+
+| Symptom | Most likely cause | Go to |
+| --- | --- | --- |
+| First workflow fails at "az login" | OIDC subject mismatch | [OIDC](#oidc-trust-failures) |
+| Deploy fails with quota error | Sweden Central quota | [Quota](#quota-and-region-limits) |
+| Gateway never finishes | It is just slow (30–45 min) | [Stuck gateway](#a-gateway-that-wont-finish) |
+| Deploy fails on name already exists | Prefix or token collision | [Name collisions](#name-collisions) |
+| A challenge went sideways | Need a clean re-run | [Re-run](#re-run-a-single-stage-or-challenge) |
+| End of day | Tear it all down | [Teardown](#full-teardown) |
+
+## OIDC trust failures
+
+The most common Challenge 00 blocker. The error appears on the first Actions run,
+at the Azure login step.
+
+<Steps>
+
+1. **Confirm the three repository secrets exist**: `AZURE_CLIENT_ID`,
+   `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`. These are identifiers, not secrets,
+   and come from the OIDC bootstrap script.
+
+2. **Check the federated credential subject.** It must match the repository and
+   the `lab` **environment** exactly. A credential scoped to a branch will not
+   match a job that targets the `lab` environment.
+
+3. **Confirm the role assignment.** The app registration needs a role
+   (Contributor or tighter) on the target subscription, or the deploy fails after
+   login.
+
+4. **Re-run the failed job** once the credential is corrected — no code change is
+   needed.
+
+</Steps>
+
+## Quota and region limits
+
+<Steps>
+
+1. **Check the failing quota** in the error message — usually VPN Gateway count or
+   public IP addresses in Sweden Central.
+
+2. **Request an increase** in advance for the cohort, or **fall back** to
+   `westeurope` by passing `-f location=westeurope` to the deploy workflow.
+
+3. **Pre-empt it**: a day before class, dry-run Challenge 03 so quota gaps surface
+   on your subscription, not a pupil's.
+
+</Steps>
+
+## A gateway that "won't finish"
+
+<Aside type="danger" title="Do not redeploy a slow gateway">
+A VPN Gateway genuinely takes 30–45 minutes. Redeploying restarts the clock and
+makes it worse. Verify state first — patience is the fix.
+</Aside>
+
+<Steps>
+
+1. **Check the real state** rather than trusting the spinner:
+
+   ```bash
+   az network vnet-gateway show \
+     --name cfs-hub-vpngw-swc \
+     --resource-group rg-cfs-hub-swc \
+     --query provisioningState -o tsv
+   ```
+
+2. If it reports `Updating`, it is working — return to teaching and check again
+   after the break.
+
+3. Only if it reports `Failed` should you re-run `deploy.yml -f component=gateway`.
+   The hub foundation is idempotent, so the re-run is safe.
+
+</Steps>
+
+## Name collisions
+
+Deploys fail with "resource already exists" when two pupils — or a previous run —
+share a name.
+
+<Steps>
+
+1. Confirm each pupil's parameters compose a **unique** name. The `cfs` prefix and
+   the `swc` region token combine into resource names; a shared subscription needs
+   a distinguishing value.
+
+2. If a previous run left a half-created resource group, tear it down (see
+   [Full teardown](#full-teardown)) before redeploying.
+
+3. Re-run the stage that failed.
+
+</Steps>
+
+## Re-run a single stage or challenge
+
+Because every stage redeploys the hub foundation, you can safely re-run just the
+part that went wrong instead of starting over.
+
+<CardGrid>
+  <Card title="Re-run a stage" icon="seti:powershell">
+    ```bash
+    gh workflow run deploy.yml -f component=spoke
+    ```
+    Swap in `gateway`, `hub`, `spoke`, or `edge`.
+  </Card>
+  <Card title="Preview only" icon="magnifier">
+    ```bash
+    gh workflow run deploy.yml \
+      -f component=edge -f whatIfOnly=true
+    ```
+    See the change set without applying it.
+  </Card>
+  <Card title="Watch a run" icon="seti:clock">
+    ```bash
+    gh run watch
+    ```
+    Tail the latest Actions run to completion.
+  </Card>
+  <Card title="Reset a challenge" icon="warning">
+    Tear down, then redeploy from `component=gateway`. Cleaner than patching a
+    broken state.
+  </Card>
+</CardGrid>
+
+## Full teardown
+
+Run at the end of every delivery, and any time you need a clean slate.
+
+<Steps>
+
+1. **Trigger teardown** with the required confirm token — anything other than the
+   literal `DELETE` aborts by design:
+
+   ```bash
+   gh workflow run teardown.yml -f confirm=DELETE
+   ```
+
+2. **Verify** the resource groups are actually gone — do not trust the workflow
+   output alone:
+
+   ```bash
+   az group list --query "[?starts_with(name, 'rg-cfs-')].name" -o tsv
+   ```
+
+3. If anything remains, re-run teardown, or delete the stray resource group
+   directly. The Challenge 00 budget alert is your backstop if a pupil forgets.
+
+</Steps>
+
+<Aside type="caution" title="Teardown is graded">
+For pupils, leaving resources running is a fail condition for B.4.2. For you, it
+is a cost risk across the cohort. Close the room only when every subscription is
+confirmed clean.
+</Aside>
+
+## When an agent is the problem
+
+- **Wrong or hallucinated output**: invoke `@challenger` to red-team it, then
+  correct it in front of the room. Showing the human gate working is a feature.
+- **Agent not responding**: confirm the inference backend is configured — see
+  [Inference backends](../inference-backends/) — and that the MCP servers are
+  connected in `.vscode/mcp.json`.
+- **MCP cannot reach Azure**: the agent's identity needs `az login` (or the
+  Codespace OIDC) and a role on the subscription, exactly like the deploy workflow.

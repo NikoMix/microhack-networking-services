@@ -1,0 +1,215 @@
+---
+title: Facilitator guide
+description: Block-by-block run-of-show for delivering the Module B microhack — talk track, live agent and MCP demo steps, checkpoints, and gotchas for every challenge across the classroom day.
+sidebar:
+  order: 1
+  label: Facilitator guide
+---
+
+import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+
+This is your minute-by-minute companion for delivering the microhack. It pairs
+with the [Agenda](../../agenda/) (the pupil-facing timetable) and the
+[Timing and pacing](../timing-and-pacing/) sheet (the flex points). Read it once
+end to end, then keep it open on a second screen while you teach.
+
+<Aside type="tip" title="The one rule that saves the day">
+Kick off the **gateway** deployment the moment Challenge 03 opens. It takes
+30–45 minutes and everything else can proceed in parallel. If you remember
+nothing else from this guide, remember that.
+</Aside>
+
+## Before the class
+
+<Steps>
+
+1. **Dry-run Challenge 03 once** in your own subscription a day ahead. This warms
+   resource-provider registrations and surfaces any quota gaps in Sweden Central
+   (VPN Gateway and public IP quotas are the usual offenders).
+
+2. **Confirm each pupil can reach Azure.** Every pupil needs their own
+   subscription with Owner (or Contributor + User Access Administrator) so the
+   OIDC bootstrap can create a federated credential and role assignment.
+
+3. **Pre-build the slides** with `npm run slides` and open
+   `slides/module-b-microhack.md` in Marp for VS Code so you can present without
+   a browser round-trip.
+
+4. **Pick your inference backend.** GitHub Models is the zero-setup classroom
+   default. If you want to demo Azure OpenAI or Azure AI Foundry, set it up
+   beforehand — see [Inference backends](../inference-backends/).
+
+5. **Choose your CFS sponsor voice.** You play the customer in Challenges 01 and
+   05. Skim the [CFS scenario](../../reference/cfs-scenario/) so your answers stay
+   consistent with the brief.
+
+</Steps>
+
+## How to run a live agent demo
+
+The single most valuable thing you do all day is invoke agents **on the
+projector**. Pupils copy what they see. Make the pattern explicit every time.
+
+<Steps>
+
+1. **Name the goal** out loud: "We need the B.1.1 requirements captured."
+
+2. **Pick the agent and say why**: "`@requirements-analyst` owns discovery, so I
+   mention it by its handle."
+
+3. **Invoke the skill**, not a freehand prompt, so pupils learn the repeatable
+   pattern — for example run the `requirements-capture` skill from
+   `.github/prompts/`.
+
+4. **Show the MCP server acting on reality.** Ask the agent a question that only a
+   live lookup can answer, such as "list the firewall policy rules currently
+   deployed", and let the **Azure MCP** server answer.
+
+5. **When the agent is wrong, leave it on screen and correct it.** That is the
+   highest-signal teaching moment of the day — pupils need to see the human gate
+   working.
+
+</Steps>
+
+## Block-by-block run-of-show
+
+### 08:45 · Welcome and the CFS scene
+
+- Set the room: this is Train-the-Trainer, so they will re-deliver it.
+- Introduce **Contoso Financial Services** as if it were a real engagement kickoff.
+- Show the target architecture diagram and promise they will deploy it for real.
+- Keep it to 15 minutes — momentum matters.
+
+### 09:00 · Challenge 00 — Setup and the CFS brief
+
+- **Goal**: everyone green before the first break — Codespace up, OIDC trusted,
+  agents and MCP responding, budget alert set.
+- **Demo**: run the `orchestration-kickoff` skill so pupils see the agents wake up.
+- **Talk track**: explain OIDC as "short-lived tokens, no secrets in the repo" —
+  this is a CFS security requirement, not a convenience.
+- **Gotcha**: the OIDC federated-credential subject must match the repository and
+  the `lab` environment exactly, or the first workflow run fails at login.
+- **Checkpoint**: every pupil sees a successful budget-alert deployment.
+
+<Aside type="caution" title="Do not skip the budget alert">
+The Challenge 00 budget alert is the financial safety net for the whole day. If a
+pupil forgets teardown, this is what warns them. Make sure everyone sets it.
+</Aside>
+
+### 09:45 · Challenge 01 — Requirements Assessment (B.1.1)
+
+- **Goal**: a complete `B1.1_RequirementsAssessment_CFS_v1.xlsx` covering all
+  eight topic areas.
+- **Demo**: this is your first full agent demo — go slow. Drive
+  `@requirements-analyst` with the `requirements-capture` skill.
+- **You play the CFS sponsor.** Answer in character; keep answers consistent with
+  the brief so the captured requirements are gradeable against the solution key.
+- **Gate**: `@challenger` reviews for gaps before the requirements are "signed".
+- **Gotcha**: pupils tend to let the agent invent requirements. Stop and show how
+  to correct an over-eager agent — the architect owns the truth.
+
+### 10:30 · Break (15 min)
+
+### 10:45 · Challenge 02 — Solution Design + Well-Architected Review
+
+- **Goal**: HLD across the six ALZ design areas (B.2.1) plus a Well-Architected
+  Review with **Security and Reliability mandatory** (B.2.2).
+- **Demo**: `@solution-designer` for the design, then `@waf-reviewer` for the WAR.
+- **Talk track**: emphasise that the design is a **gate** — nothing deploys until
+  the architecture is approved. This mirrors real engagement governance.
+- **Artifacts**: `B2.1_SolutionDesign_CFS_v1.docx`,
+  `B2.2_WellArchitectedReview_CFS_v1.xlsx`.
+- **Gotcha**: pupils skimp on the WAF review. Insist on concrete findings with
+  severity, not "looks fine".
+
+### 12:00 · Lunch (45 min)
+
+### 12:45 · Challenge 03 — Deploy the hub and spoke (B.3.1 + B.3.2)
+
+<Aside type="danger" title="Gateway first — every time">
+The very first action of this block is to start the gateway:
+`gh workflow run deploy.yml -f component=gateway`. Do it before you say anything
+else. Then teach into the 30–45 minute wait.
+</Aside>
+
+- **Goal**: a live hub and spoke. Start `component=gateway`, then `component=hub`,
+  then `component=spoke`.
+- **Demo**: show `whatIfOnly=true` first so pupils see a safe preview before the
+  real change.
+- **Use the wait well**: run the design talk-track and start spoke planning while
+  the gateway provisions. Never sit idle watching a deployment.
+- **Talk track**: the hub foundation (Log Analytics, hub VNet, Azure Firewall)
+  deploys with every stage, so each stage is self-consistent and idempotent.
+- **Artifact**: `B3.x_AsBuilt_CFS_v1.docx` (this one document covers both B.3.1
+  and the B.3.2 service inventory).
+- **Gotcha**: a gateway that "won't finish" is almost always just slow. Verify
+  state with `az network vnet-gateway show` — do **not** redeploy.
+
+### 14:15 · Break (15 min)
+
+### 14:30 · Challenge 04 — Private networking and global delivery (B.3.2)
+
+- **Goal**: verify what the spoke stage deployed, then deploy the edge stage.
+- **Verify (spoke)**: Private Link to Key Vault and Storage, private DNS zones,
+  no public IPs on compute, internal Load Balancer.
+- **Deploy (edge)**: `component=edge` brings Application Gateway + WAF and Front
+  Door + WAF. Preview with `whatIfOnly=true` first.
+- **Demo**: `@iac-engineer` narrates each service's role; `@challenger` actively
+  probes for any public exposure.
+- **Outcome**: nine networking services total — well past the five B.3.2 requires.
+- **Gotcha**: the classic mistake is a public backend pool. The backend must point
+  at the internal Load Balancer or private compute.
+
+### 15:45 · Challenge 05 — Validation and Testing (B.4.1)
+
+- **Goal**: a completed `B4.1_ValidationTestPlan_CFS_v1.xlsx` with results and a
+  customer sign-off.
+- **Demo**: `@validation-engineer` builds the plan; run a connectivity test that
+  proves private-only access and central egress.
+- **Enable** Network Watcher and NSG flow logs as part of validation evidence.
+- **You play the CFS sponsor again** for the **mandatory sign-off**. Sign the
+  Customer Sign-Off sheet in the workbook.
+- **Virtual delivery**: if you cannot physically sign, a named acknowledgement in
+  a chat or email thread is acceptable — capture the screenshot.
+
+<Aside type="note" title="Sign-off is not optional">
+B.4.1 requires customer acceptance. In a real engagement this is the gate to
+billing. Model it seriously — make the pupils ask you for sign-off explicitly.
+</Aside>
+
+### 16:45 · Break (10 min)
+
+### 16:55 · Challenge 06 — As-built, operations, and teardown (B.4.2)
+
+- **Goal**: finalize the evidence pack and tear everything down cleanly.
+- **Demo**: `@evidence-author` assembles the as-built, the decision log, and the
+  SOPs.
+- **Teardown**: run `teardown.yml` with the confirm token `DELETE`. Anything other
+  than `DELETE` aborts by design — show that on purpose.
+- **Verify** the resource groups are actually gone. Do not trust the workflow
+  blindly; check the portal or `az group list`.
+- **Grading reality**: leaving resources running is a fail condition. Teardown is
+  part of the assessment, not an afterthought.
+
+### 17:45 · Retrospective and close
+
+- Ask: "What would you change for a *real* CFS engagement?"
+- Reinforce the re-delivery message: they now own this material.
+- Point them at the solution keys and this trainer section for their own runs.
+
+## The full evidence pack at a glance
+
+| Control | Artifact | Produced in |
+| --- | --- | --- |
+| B.1.1 | `B1.1_RequirementsAssessment_CFS_v1.xlsx` | Challenge 01 |
+| B.2.1 | `B2.1_SolutionDesign_CFS_v1.docx` | Challenge 02 |
+| B.2.2 | `B2.2_WellArchitectedReview_CFS_v1.xlsx` | Challenge 02 |
+| B.3.1 + B.3.2 | `B3.x_AsBuilt_CFS_v1.docx` | Challenges 03–04 |
+| B.4.1 | `B4.1_ValidationTestPlan_CFS_v1.xlsx` | Challenge 05 |
+| B.4.2 | `B4.2_DecisionLog_CFS_v1.xlsx` · `B4.2_SOPs_CFS_v1.docx` | Challenge 06 |
+
+## If something breaks
+
+Keep the [Reset and troubleshooting](../reset-and-troubleshooting/) runbook open.
+The most common interventions — re-running a single deploy stage, recovering a
+stuck gateway, fixing OIDC, and full cleanup — are all there with exact commands.

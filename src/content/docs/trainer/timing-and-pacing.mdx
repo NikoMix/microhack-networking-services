@@ -1,0 +1,119 @@
+---
+title: Timing and pacing
+description: Full-day and half-day timing sheets for the Module B microhack, with the gateway long-pole strategy, per-block flex points, and explicit cut lines for shorter deliveries.
+sidebar:
+  order: 2
+  label: Timing & pacing
+---
+
+import { Aside, Steps, Card, CardGrid } from '@astrojs/starlight/components';
+
+Timing is the trainer's hardest job. The deployments are real, so the clock is
+real. This sheet gives you the full-day shape, the half-day variant, and the exact
+points where you can flex without losing learning outcomes.
+
+<Aside type="danger" title="The gateway is your clock">
+Azure VPN Gateway provisioning takes **30–45 minutes**. Challenge 03 is built so
+you start it first and teach into the wait. Every timing in this sheet assumes you
+exploit that parallelism. If you wait idle, the day will overrun.
+</Aside>
+
+## Full-day timetable (~7.5h + breaks)
+
+| Time | Block | Module B | Hard floor |
+| --- | --- | --- | --- |
+| 08:45 | Welcome, intros, CFS scene | — | 15 min |
+| 09:00 | Challenge 00 — Setup, tooling, CFS brief | foundation | 45 min |
+| 09:45 | Challenge 01 — Requirements Assessment | B.1.1 | 45 min |
+| 10:30 | Break | — | 15 min |
+| 10:45 | Challenge 02 — Design + WAR | B.2.1 + B.2.2 | 75 min |
+| 12:00 | Lunch | — | 45 min |
+| 12:45 | Challenge 03 — Hub & spoke (**gateway first**) | B.3.1 + B.3.2 | 90 min |
+| 14:15 | Break | — | 15 min |
+| 14:30 | Challenge 04 — Private networking + global delivery | B.3.2 | 75 min |
+| 15:45 | Challenge 05 — Validation & testing | B.4.1 | 60 min |
+| 16:45 | Break | — | 10 min |
+| 16:55 | Challenge 06 — As-built + teardown | B.4.2 | 50 min |
+| 17:45 | Retrospective & close | — | 15 min |
+
+## Where the time actually goes
+
+<CardGrid>
+  <Card title="Front-loaded risk" icon="warning">
+    Challenge 00 OIDC setup and Challenge 03 gateway start are the two places a
+    cohort falls behind. Protect both with extra buffer.
+  </Card>
+  <Card title="Parallelisable" icon="rocket">
+    The gateway, hub, and spoke deploys all run in Actions. Pupils keep working in
+    chat and docs while they provision.
+  </Card>
+  <Card title="Compressible" icon="seti:clock">
+    Challenges 04–06 can be demoed from the solution keys if you are behind. The
+    design challenges (01–02) cannot — they are the hands-on core.
+  </Card>
+  <Card title="Fixed cost" icon="information">
+    Breaks and lunch are non-negotiable for a full day. Cut scope, not rest.
+  </Card>
+</CardGrid>
+
+## Flex points — what to do if you are behind
+
+<Steps>
+
+1. **Behind after Challenge 00 (OIDC pain).** Pair pupils who are stuck with those
+   who are green. Move on once 80% are working; catch up stragglers during the
+   Challenge 01 demo.
+
+2. **Behind after Challenge 02.** Start the Challenge 03 gateway deploy *before*
+   lunch if the room is ready, so it provisions during the break. This buys you
+   45 minutes for free.
+
+3. **Behind after Challenge 03.** Switch Challenge 04's edge deploy to a single
+   `whatIfOnly=true` preview plus a walk-through from
+   [Solution 04](../../solutions/04-private-networking-compute/), instead of a full
+   real deploy.
+
+4. **Behind after Challenge 05.** Demo Challenge 06 evidence assembly from the
+   solution key, but **never** skip the live teardown — leaving resources running
+   is a fail condition for the pupils and a cost risk for you.
+
+</Steps>
+
+## Half-day "design-only" variant (~3.5h)
+
+For executive, pre-sales, or time-boxed audiences who need the shape and the
+method without the deploy overhead.
+
+| Time | Block | Mode |
+| --- | --- | --- |
+| 00:00 | Welcome + CFS scene | live |
+| 00:15 | Challenge 00 — Setup (agents + MCP only, skip OIDC) | hands-on |
+| 00:45 | Challenge 01 — Requirements | hands-on |
+| 01:30 | Break | — |
+| 01:45 | Challenge 02 — Design + WAR | hands-on |
+| 03:00 | Challenges 03–06 | demo from solution keys |
+| 03:30 | Retrospective & close | live |
+
+<Aside type="tip" title="No deploy means no OIDC, quota, or teardown">
+The half-day variant skips real deployments entirely, so you avoid OIDC setup,
+Sweden Central quota checks, and teardown. You can run it with nothing but a
+Codespace and GitHub Models.
+</Aside>
+
+## Two-day "deep dive" expansion
+
+If you have the luxury of two days, do not pad — go deeper:
+
+- **Day 1**: Challenges 00–03 at full pace, with a real ExpressRoute *design*
+  workshop (still simulated via VPN, per the lab constraints).
+- **Day 2**: Challenges 04–06, plus an operations deep dive — have pupils
+  exercise the SOPs from `B4.2_SOPs_CFS_v1.docx` against their live environment
+  before tearing it down.
+
+## Pre-class timing checklist
+
+- [ ] You have personally dry-run Challenge 03 within the last week
+- [ ] Sweden Central quota for VPN Gateway and public IPs is confirmed per pupil
+- [ ] Slides pre-built (`npm run slides`) and open in Marp for VS Code
+- [ ] Inference backend chosen and, if Azure, pre-provisioned
+- [ ] You have decided your cut line in advance in case the room runs slow
