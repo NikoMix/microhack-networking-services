@@ -191,7 +191,33 @@ This part verifies it end to end.
 </Aside>
 
 <Steps>
-1. Test end-to-end delivery:
+1. **Approve the Front Door → App Gateway Private Link connection.** Front Door
+   Premium reaches the App Gateway origin over a Private Link. The shared Private
+   Link request lands as **Pending** on the App Gateway and must be approved before
+   traffic flows. The `deploy.ps1`/`deploy.sh` scripts and the `deploy.yml` workflow
+   auto-approve it for `component=all`/`edge` — verify (or approve manually) here:
+
+   ```bash
+   AGW_ID=$(az network application-gateway show \
+     -g rg-cfs-spoke-swc -n cfs-app-agw-swc --query id -o tsv)
+   # List the Front Door → App Gateway connection(s)
+   az network private-endpoint-connection list --id "$AGW_ID" -o table
+   # If status is Pending, approve it:
+   CONN_ID=$(az network private-endpoint-connection list --id "$AGW_ID" \
+     --query "[?properties.privateLinkServiceConnectionState.status=='Pending'].id" -o tsv)
+   [ -n "$CONN_ID" ] && az network private-endpoint-connection approve --id "$CONN_ID" \
+     --description "Approved Front Door Premium origin"
+   # Expected end state: status == Approved
+   ```
+
+   <Aside type="note" title="Why approval is required (teaching point)">
+   Private Link connections are **consumer-initiated, provider-approved**. Front Door
+   (the consumer) requests the link; the App Gateway owner (the provider) must approve
+   it. This is the same approval gate pupils saw for the Key Vault and Storage private
+   endpoints — here the provider is your own App Gateway, so you approve your own request.
+   </Aside>
+
+2. Test end-to-end delivery:
    ```bash
    AFD_ENDPOINT=$(az afd endpoint show \
      --profile-name cfs-edge-afd-swc \
@@ -202,7 +228,7 @@ This part verifies it end to end.
    # Expected: HTTP 200 or 301 from the Application Gateway backend
    ```
 
-2. Verify the WAF policy is active on Front Door:
+3. Verify the WAF policy is active on Front Door:
    ```bash
    az afd security-policy list \
      --profile-name cfs-edge-afd-swc -g rg-cfs-spoke-swc -o table
@@ -239,6 +265,7 @@ This part verifies it end to end.
 | Internal Load Balancer is Standard SKU | `az network lb show` |
 | App Gateway WAF in Prevention mode, CRS 3.2 | `az network application-gateway waf-config show` |
 | Front Door Premium WAF policy active | `az afd security-policy list` |
+| Front Door → App Gateway Private Link is Approved | `az network private-endpoint-connection list --id <appgw-id> -o table` |
 | B3.2 artifact lists ≥5 services with resource names | Evidence template |
 
 ## Evidence artifacts

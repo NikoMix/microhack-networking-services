@@ -77,7 +77,7 @@ To embed in docs:
 Internet Users (Global)
     │
     ▼ HTTPS:443
-Azure Front Door Standard (Global Anycast)
+Azure Front Door Premium (Global Anycast)
     │ + WAF (Prevention, OWASP 3.2)
     ▼ HTTPS
 App Gateway v2 + WAF (swedencentral, Zones 1-2-3)

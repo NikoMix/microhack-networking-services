@@ -83,6 +83,36 @@ module "application_gateway" {
     zones                    = ["1", "2", "3"]
   }
 
+  # Name of the frontend IP configuration that exposes the Private Link service.
+  # Front Door Premium references this name as the shared-private-link "group id".
+  frontend_ip_configuration_public_name = "public"
+
+  # Private Link configuration so Front Door Premium can reach the App Gateway
+  # frontend privately. The NICs land in the dedicated snet-agw-pl subnet (network
+  # policies disabled). The connection is approved on the App Gateway side post-deploy.
+  #
+  # KNOWN LIMITATION (Terraform mirror only): the AVM
+  # Azure/avm-res-network-applicationgateway module (<=0.5.2) creates this Private Link
+  # configuration and names the public frontend "public", but its public-frontend block
+  # exposes no field to bind the PL config onto that frontend (only the *private*
+  # frontend block accepts private_link_configuration_name). The Bicep path
+  # (infra/bicep/modules/app-gateway.bicep) IS the authoritative implementation for the
+  # public-frontend Private Link wiring; on Terraform, approve/verify the connection
+  # manually or use Bicep for this feature. Tracked upstream.
+  private_link_configuration = [
+    {
+      name = "agw-pl"
+      ip_configuration = [
+        {
+          name                          = "agw-pl-ipconfig"
+          primary                       = true
+          private_ip_address_allocation = "Dynamic"
+          subnet_id                     = module.spoke_vnet.subnets["app_gateway_private_link"].resource_id
+        }
+      ]
+    }
+  ]
+
   frontend_ports = {
     http = {
       name = "frontend-port-80"
@@ -181,6 +211,19 @@ module "front_door" {
       https_port                     = 443
       priority                       = 1
       weight                         = 1000
+
+      # Premium-only: reach the Application Gateway over Private Link. The connection
+      # lands as "Pending" and is approved on the App Gateway side post-deploy. The
+      # frontend IP config name ("public") is the Private Link group id (derived by
+      # Azure from the App Gateway's private link configuration; target_type must be
+      # null for an Application Gateway target).
+      private_link = {
+        agw = {
+          request_message        = "Front Door Premium private link to the CFS Application Gateway"
+          location               = azurerm_resource_group.this["spoke"].location
+          private_link_target_id = module.application_gateway.resource_id
+        }
+      }
     }
   }
 
@@ -209,6 +252,11 @@ module "front_door" {
         microsoft_default = {
           type    = "Microsoft_DefaultRuleSet"
           version = "2.1"
+          action  = "Block"
+        }
+        microsoft_bot = {
+          type    = "Microsoft_BotManagerRuleSet"
+          version = "1.0"
           action  = "Block"
         }
       }

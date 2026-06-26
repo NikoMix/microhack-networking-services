@@ -224,6 +224,32 @@ linter; Checkov adds Terraform and supply-chain coverage.
 - **WAF** on both Front Door and Application Gateway; **NSG flow logs** + **Network Watcher**
   - **Log Analytics** for full network observability.
 
+## Premium SKUs & Private Link origin
+
+This build deploys the **security-forward Premium tier** for the two edge security services
+(aligned with the CFS regulated-fintech narrative and the Module B evidence/ADRs):
+
+| Service | SKU / tier | Key Premium capability used |
+| --- | --- | --- |
+| **Azure Firewall** | **Premium** | **IDPS in `Deny` mode** (signature-based intrusion *prevention*); TLS inspection is design-only (needs a customer CA cert). |
+| **Azure Front Door** | **Premium** | **Private Link origin** to the Application Gateway + managed WAF (**DRS 2.1 + Bot Manager**). |
+
+**Front Door → App Gateway Private Link** is wired so Front Door reaches the origin **privately**
+over the Microsoft backbone. The App Gateway keeps its public IP (required for the v2 control
+plane) and exposes a Private Link configuration on its **public frontend** via the dedicated
+`snet-agw-pl` (`10.1.4.0/24`) subnet. The resulting Private Endpoint connection lands **`Pending`**
+and is **auto-approved post-deploy** by `deploy.ps1` / `deploy.sh` / `deploy.yml` (runs for
+`component` = `all` or `edge`). For production hardening the App Gateway PIP can be NSG-locked to
+the `AzureFrontDoor.Backend` service tag so there is **no public origin bypass**.
+
+> ⚠️ **Terraform mirror limitation (Bicep is authoritative here).** The AVM
+> `Azure/avm-res-network-applicationgateway` module exposes
+> `private_link_configuration_name` only on the **private** frontend block, not the **public**
+> one, so `terraform apply` cannot bind the Front Door Private Link to the public frontend the way
+> Bicep does. **Bicep (`infra/bicep/`) is the primary/authoritative IaC for the FD→AppGW
+> public-frontend Private Link wiring**; the Terraform path is a validated topology mirror. See the
+> caveat comment in [`infra/terraform/delivery.tf`](terraform/delivery.tf).
+
 ## Layout
 
 ```

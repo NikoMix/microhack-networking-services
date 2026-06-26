@@ -47,23 +47,31 @@ az network application-gateway waf-config show \
 ## Front Door → App Gateway Private Link (key configuration)
 
 The most common pupil mistake is configuring Front Door to use the App Gateway's public IP
-directly, bypassing the WAF. The correct configuration:
+directly, bypassing Private Link. The correct configuration (as implemented in
+`infra/bicep/modules/app-gateway.bicep` + `front-door.bicep`):
 
-1. App Gateway has a **private frontend IP** only (or public + private)
-2. Front Door origin type is **Application gateway** with Private Link enabled
-3. The Front Door origin approval request must be approved on the App Gateway resource
+1. App Gateway keeps its **public frontend** (required for the v2 control plane) and exposes a
+   **Private Link configuration** on that frontend, with IP configs in the dedicated
+   `snet-agw-pl` subnet (`10.1.4.0/24`, `privateLinkServiceNetworkPolicies: Disabled`).
+2. Front Door Premium origin type is **Application gateway** with a `sharedPrivateLinkResource`
+   whose `groupId` is the App Gateway frontend IP config name and `privateLink.id` is the App
+   Gateway resource ID — so Front Door reaches the origin privately, not over the public IP.
+3. The Front Door origin Private Link request lands **Pending** and must be approved on the App
+   Gateway. `deploy.ps1`/`deploy.sh` and `deploy.yml` auto-approve it for `component=all`/`edge`;
+   to do it manually:
 
 ```bash
-# Check pending Private Link approvals on App Gateway
-az network application-gateway private-link-resource list \
-  --gateway-name cfs-app-agw-swc -g rg-cfs-spoke-swc -o table
+APPGW_ID=$(az network application-gateway show \
+  --name cfs-app-agw-swc -g rg-cfs-spoke-swc --query id -o tsv)
 
-# Approve Front Door's Private Link connection
-az network private-endpoint-connection approve \
-  --resource-name cfs-app-agw-swc \
-  --resource-group rg-cfs-spoke-swc \
-  --type Microsoft.Network/applicationGateways \
-  --name <connection-name>
+# Check pending Private Link connections on the App Gateway
+az network private-endpoint-connection list --id "$APPGW_ID" -o table
+
+# Approve Front Door's Private Link connection (generic --id form)
+CONN_ID=$(az network private-endpoint-connection list --id "$APPGW_ID" \
+  --query "[?properties.privateLinkServiceConnectionState.status=='Pending'].id" -o tsv)
+az network private-endpoint-connection approve --id "$CONN_ID" \
+  --description "Approved Front Door Premium origin"
 ```
 
 ## Reference B.3.2 service table (completed — 8 services)

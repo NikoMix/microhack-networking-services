@@ -1,5 +1,5 @@
-// Azure Firewall + Firewall Policy providing central egress and segmentation.
-metadata description = 'Standard Azure Firewall with a policy that allows controlled spoke egress.'
+// Azure Firewall Premium + Firewall Policy providing central egress, IDPS and segmentation.
+metadata description = 'Premium Azure Firewall with an IDPS-enabled policy that allows controlled spoke egress.'
 
 @description('Firewall name.')
 param firewallName string
@@ -28,7 +28,15 @@ module policy 'br/public:avm/res/network/firewall-policy:0.3.5' = {
     name: policyName
     location: location
     tags: tags
-    tier: 'Standard'
+    tier: 'Premium'
+    // Premium-only IDPS in Deny mode: blocks traffic matching known attack signatures
+    // (PSD2 Art. 95 network anomaly detection). Benign lab HTTP/HTTPS is unaffected —
+    // IDPS only acts on signature-matched exploits/malware, not normal traffic.
+    // TLS inspection is design-only: it requires a customer intermediate CA certificate
+    // provisioned to Key Vault.
+    intrusionDetection: {
+      mode: 'Deny'
+    }
     ruleCollectionGroups: [
       {
         name: 'DefaultEgressRuleCollectionGroup'
@@ -73,7 +81,7 @@ module firewall 'br/public:avm/res/network/azure-firewall:0.10.1' = {
     name: firewallName
     location: location
     tags: tags
-    azureSkuTier: 'Standard'
+    azureSkuTier: 'Premium'
     virtualNetworkResourceId: virtualNetworkResourceId
     firewallPolicyId: policy.outputs.resourceId
     diagnosticSettings: [

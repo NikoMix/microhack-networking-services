@@ -20,7 +20,7 @@
     <mxCell id="fw-box" value="Azure Firewall (Hub) — Central Inspection Point" style="swimlane;startSize=30;fillColor=#FFE6B3;strokeColor=#FF8000;fontStyle=1;fontSize=11;fontColor=#7F3F00;" vertex="1" parent="1">
       <mxGeometry x="420" y="200" width="330" height="380" as="geometry"/>
     </mxCell>
-    <mxCell id="fw" value="Azure Firewall Standard&#xa;cfs-hub-fw-swc&#xa;Private IP: 10.0.0.4&#xa;Public IP: &lt;pip&gt;&#xa;Zones: 1, 2, 3&#xa;Threat Intel: Alert+Deny" style="shape=mxgraph.azure2.firewall;fillColor=#FF8000;strokeColor=#CC5500;fontSize=10;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="fw-box">
+    <mxCell id="fw" value="Azure Firewall Premium&#xa;cfs-hub-fw-swc&#xa;Private IP: 10.0.0.4&#xa;Public IP: &lt;pip&gt;&#xa;Zones: 1, 2, 3&#xa;IDPS: Deny | Threat Intel: Alert+Deny" style="shape=mxgraph.azure2.firewall;fillColor=#FF8000;strokeColor=#CC5500;fontSize=10;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="fw-box">
       <mxGeometry x="80" y="50" width="170" height="130" as="geometry"/>
     </mxCell>
 

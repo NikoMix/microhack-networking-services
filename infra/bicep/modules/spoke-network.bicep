@@ -1,5 +1,6 @@
 // Workload spoke VNet: NSGs, a route table forcing egress through the firewall,
-// and four purpose-built subnets (workload, private endpoints, app gateway, LB).
+// and five purpose-built subnets (workload, private endpoints, app gateway,
+// app gateway private link, LB).
 metadata description = 'Spoke VNet with default-route-to-firewall and segmented subnets.'
 
 @description('Spoke VNet name.')
@@ -22,6 +23,9 @@ param privateEndpointSubnetPrefix string
 
 @description('Application Gateway subnet prefix.')
 param appGatewaySubnetPrefix string
+
+@description('Application Gateway Private Link subnet prefix (dedicated; network policies disabled).')
+param appGatewayPrivateLinkSubnetPrefix string
 
 @description('Internal load balancer subnet prefix.')
 param loadBalancerSubnetPrefix string
@@ -170,6 +174,14 @@ module vnet 'br/public:avm/res/network/virtual-network:0.9.0' = {
         networkSecurityGroupResourceId: appGwNsg.outputs.resourceId
       }
       {
+        // Dedicated subnet hosting the Application Gateway Private Link service NICs.
+        // Front Door Premium connects to the App Gateway frontend through this subnet,
+        // which therefore must disable private-link-service network policies.
+        name: 'snet-agw-pl'
+        addressPrefix: appGatewayPrivateLinkSubnetPrefix
+        privateLinkServiceNetworkPolicies: 'Disabled'
+      }
+      {
         name: 'snet-lb'
         addressPrefix: loadBalancerSubnetPrefix
         routeTableResourceId: routeTable.outputs.resourceId
@@ -193,8 +205,11 @@ output privateEndpointSubnetResourceId string = vnet.outputs.subnetResourceIds[1
 @description('Application Gateway subnet resource ID.')
 output appGatewaySubnetResourceId string = vnet.outputs.subnetResourceIds[2]
 
+@description('Application Gateway Private Link subnet resource ID.')
+output appGatewayPrivateLinkSubnetResourceId string = vnet.outputs.subnetResourceIds[3]
+
 @description('Internal load balancer subnet resource ID.')
-output loadBalancerSubnetResourceId string = vnet.outputs.subnetResourceIds[3]
+output loadBalancerSubnetResourceId string = vnet.outputs.subnetResourceIds[4]
 
 @description('Workload NSG resource ID (used as flow-log target).')
 output workloadNsgResourceId string = workloadNsg.outputs.resourceId

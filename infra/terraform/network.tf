@@ -55,9 +55,18 @@ module "firewall_policy" {
   name                = local.names.firewall_policy
   location            = azurerm_resource_group.this["hub"].location
   resource_group_name = azurerm_resource_group.this["hub"].name
-  firewall_policy_sku = "Standard"
-  enable_telemetry    = var.enable_telemetry
-  tags                = local.tags
+  firewall_policy_sku = "Premium"
+
+  # Premium-only IDPS in Deny mode: blocks traffic matching known attack signatures
+  # (PSD2 Art. 95 network anomaly detection). Benign lab HTTP/HTTPS is unaffected.
+  # TLS inspection is design-only: it requires a customer intermediate CA certificate
+  # provisioned to Key Vault.
+  firewall_policy_intrusion_detection = {
+    mode = "Deny"
+  }
+
+  enable_telemetry = var.enable_telemetry
+  tags             = local.tags
 }
 
 module "hub_vnet" {
@@ -95,7 +104,7 @@ module "azure_firewall" {
   location            = azurerm_resource_group.this["hub"].location
   resource_group_name = azurerm_resource_group.this["hub"].name
   firewall_sku_name   = "AZFW_VNet"
-  firewall_sku_tier   = "Standard"
+  firewall_sku_tier   = "Premium"
   firewall_policy_id  = module.firewall_policy.resource_id
   firewall_zones      = ["1", "2", "3"]
   enable_telemetry    = var.enable_telemetry
@@ -154,6 +163,14 @@ module "spoke_vnet" {
     app_gateway = {
       name             = "snet-appgw"
       address_prefixes = ["10.1.2.0/24"]
+    }
+    # Dedicated subnet hosting the Application Gateway Private Link service NICs.
+    # Front Door Premium connects to the App Gateway frontend through this subnet,
+    # which therefore must disable private-link-service network policies.
+    app_gateway_private_link = {
+      name                                          = "snet-agw-pl"
+      address_prefixes                              = ["10.1.4.0/24"]
+      private_link_service_network_policies_enabled = false
     }
     load_balancer = {
       name             = "snet-lb"
