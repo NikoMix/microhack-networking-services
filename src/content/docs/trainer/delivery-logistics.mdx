@@ -1,0 +1,211 @@
+---
+title: Delivery Logistics
+description: Room setup, per-pupil Azure subscription and OIDC prerequisites, regional quota requirements, cost guardrails, GitHub Codespaces configuration, and inference backend choices for delivering the Module B Networking Microhack.
+sidebar:
+  order: 2
+  label: Delivery Logistics
+---
+
+import { Aside, Steps, Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Cost estimate" icon="warning">€40–80 per pupil for a full day</Card>
+  <Card title="Azure role" icon="approve-check">Owner on subscription required</Card>
+  <Card title="Codespace" icon="laptop">All tooling pre-installed — no local setup</Card>
+  <Card title="Inference" icon="setting">GitHub Models (default) · Azure OpenAI · Azure AI Foundry</Card>
+</CardGrid>
+
+## Pre-flight Checklist (Complete Before Class Day)
+
+<Steps>
+1. Confirm every pupil has an **Owner-level** Azure subscription or resource group
+2. Verify swedencentral regional quota for Firewall Premium, Public IPs, and VPN Gateway
+3. Confirm all participants have GitHub Copilot enabled (Individual, Business, or Enterprise)
+4. Verify GitHub Codespaces quota is available for the cohort (60 core-hours / month on free tier)
+5. Decide the inference backend and test it on your trainer Codespace
+6. Dry-run Challenge 03 on your own subscription to warm registrations and surface quota issues
+7. Brief pupils on cost estimate and confirm budget alerts will be set in Challenge 00
+8. Share this page and the [Prerequisites](../prerequisites/) with pupils at least 2 days before class
+</Steps>
+
+## Per-Pupil Azure Subscription Requirements
+
+| Requirement | Detail |
+| --- | --- |
+| **Role** | `Owner` on a subscription or resource group where VNets, Firewall, and role assignments can be created |
+| **Region** | `swedencentral` (primary). Fallback: `westeurope` with `-f location=westeurope` |
+| **Quota** | Azure Firewall Premium, 4+ Public IPs, VPN Gateway, App Gateway, Bastion Standard in the chosen region |
+| **Resource providers** | `Microsoft.Network`, `Microsoft.Compute`, `Microsoft.KeyVault`, `Microsoft.Storage`, `Microsoft.OperationalInsights` — all must be registered |
+| **Subscription type** | Pay-As-You-Go or EA. Free Trial subscriptions do not have sufficient quota for Azure Firewall or gateways |
+
+<Aside type="caution" title="Free Trial subscriptions are not suitable">
+Free Trial Azure subscriptions have strict quota limits that prevent deploying Azure Firewall Premium and VPN Gateways. Pupils must use a paid subscription (Pay-As-You-Go or EA/MCA). MSDN / Visual Studio subscriptions work but have lower spending limits — check budget alerts.
+</Aside>
+
+## Cost Estimate
+
+The microhack deploys real, billable Azure resources. Costs are approximate and assume the full day (approximately 8 hours):
+
+| Service | Approx. hourly cost (swedencentral) | Full-day estimate |
+| --- | --- | --- |
+| Azure Firewall Premium | ~€3.00/hr | ~€24 |
+| VPN Gateway (VpnGw1AZ) | ~€0.40/hr | ~€3.20 |
+| Application Gateway WAF_v2 | ~€0.40/hr + capacity | ~€5 |
+| Azure Front Door Premium | ~€0.15/hr + traffic | ~€2 |
+| Azure Bastion Standard | ~€0.20/hr | ~€1.60 |
+| Virtual Machine (private) | ~€0.10/hr | ~€0.80 |
+| Log Analytics | ingestion-based | ~€2–5 |
+| **Total estimate** | — | **€38–80** |
+
+<Aside type="tip" title="Reduce cost on practice runs">
+Use `-f whatIfOnly=true` for the what-if preview during Challenges 03–04 without incurring real resource costs. For a dry-run, tear down immediately after Challenge 03 to limit Firewall and gateway runtime.
+</Aside>
+
+## Budget Alerts
+
+Challenge 00 requires every pupil to set a budget alert as part of the setup. Recommended settings:
+
+| Setting | Value |
+| --- | --- |
+| Scope | Azure subscription |
+| Budget amount | €100 per month |
+| Alert threshold (forecast) | 80% (€80) |
+| Alert threshold (actual) | 100% (€100) |
+| Alert recipients | Pupil email + trainer email |
+
+The budget alert confirmation is referenced in the Challenge 06 teardown evidence as a cost governance control.
+
+## OIDC Federated Credential Setup
+
+OIDC (OpenID Connect) federated credentials allow GitHub Actions to authenticate to Azure without stored secrets. Each pupil needs to configure this before Challenge 03.
+
+**What pupils need:**
+
+<Steps>
+1. Create an app registration (or use a User-Assigned Managed Identity) in Azure Entra ID
+2. Add a federated credential with the following subject: `repo:<owner>/<repo>:environment:lab`
+3. Assign `Contributor` and `User Access Administrator` to the app registration on the subscription
+4. Add three GitHub Actions secrets to the forked repository: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
+5. Create a GitHub Actions environment named `lab` (Settings → Environments)
+6. Verify by running: `gh workflow run deploy.yml -f component=gateway -f whatIfOnly=true`
+</Steps>
+
+**Federated credential subject format:**
+
+```
+repo:owner/repo-name:environment:lab
+```
+
+The environment name `lab` must match exactly. Casing matters.
+
+<Aside type="caution" title="Most common OIDC failure">
+The federated credential subject must use the forked repo path (`owner/repo-name`), not the upstream repo path. If a pupil forked to `myusername/microhack-networking-services`, the subject must be `repo:myusername/microhack-networking-services:environment:lab`.
+</Aside>
+
+## GitHub Codespaces
+
+All tooling is pre-installed in the dev container — pupils do not install anything locally.
+
+**Pre-installed in the Codespace:**
+
+- Azure CLI + Bicep compiler
+- Terraform and `azd` (Azure Developer CLI)
+- GitHub CLI (`gh`)
+- PowerShell 7
+- Node.js 24 + npm (for Astro docs and Marp slides)
+- Marp CLI (slide deck build)
+- markdownlint CLI
+- GitHub Copilot extension (requires active subscription)
+- Azure MCP server (pre-configured in `.vscode/mcp.json`)
+
+**Codespace sizing:**
+
+The default Codespace machine size (2-core, 8 GB RAM) is sufficient. For faster builds, 4-core machines are recommended.
+
+**Quota:** The GitHub free tier includes 60 core-hours per month. A 2-core Codespace running for 8 hours uses 16 core-hours. A cohort of 10 pupils should have no quota issues on free-tier accounts.
+
+## Regional Quota Verification
+
+Run this before the class to confirm quota is available in swedencentral:
+
+```bash
+az vm list-usage --location swedencentral --output table | grep -i "public\|firewall\|gateway\|bastion"
+```
+
+If quota is insufficient, use the `-f location=westeurope` flag on all deploy commands. Update the flag in a class-wide shared document so all pupils use the same region.
+
+**Minimum quota required per pupil in the chosen region:**
+
+| Resource | Minimum quota |
+| --- | --- |
+| Azure Firewall Policy | 1 |
+| Public IP Addresses (Standard SKU) | 4 |
+| VPN / Virtual WAN Gateways | 1 |
+| Application Gateways | 1 |
+| Virtual Networks | 2 |
+| Virtual Machines (DSv3 or equivalent) | 2 cores |
+
+## Resource Provider Registration
+
+Some subscriptions have resource providers in an unregistered state. Pre-register before the class:
+
+```bash
+az provider register --namespace Microsoft.Network --wait
+az provider register --namespace Microsoft.Compute --wait
+az provider register --namespace Microsoft.KeyVault --wait
+az provider register --namespace Microsoft.Storage --wait
+az provider register --namespace Microsoft.OperationalInsights --wait
+az provider register --namespace Microsoft.Cdn --wait
+```
+
+Registration can take 5–10 minutes. Running this during Challenge 00 setup (while pupils do other tasks) avoids blocking in Challenge 03.
+
+## Inference Backend Options
+
+The Copilot agents are model-agnostic. Trainers choose the inference backend based on the customer environment:
+
+| Backend | Best for | How to configure |
+| --- | --- | --- |
+| **GitHub Models** (default) | Any environment with GitHub Copilot; zero Azure dependency | `GITHUB_TOKEN` is auto-set in Codespaces — no configuration needed |
+| **Azure OpenAI** | Customers with Azure OpenAI deployments already provisioned | Set `AZURE_OPENAI_ENDPOINT` in the Codespace environment; use keyless RBAC (`Cognitive Services OpenAI User` role) |
+| **Azure AI Foundry** | Customers using Azure AI Foundry for model management | Set `AZURE_AI_PROJECT_ENDPOINT` in the Codespace environment; use keyless RBAC |
+
+**No API keys are stored in GitHub secrets** — all three backends use keyless authentication.
+
+Full switching guide: `reference/modular-inference`
+
+<Aside type="tip" title="GitHub Models is zero-setup">
+For most classroom deliveries, GitHub Models is the recommended default. It requires only that GitHub Copilot is enabled for the participant — no Azure AI resources are needed. The agents work identically regardless of which backend is used.
+</Aside>
+
+## Room and Facility Setup
+
+**Physical classroom:**
+
+- Each pupil needs a laptop with a modern browser (Chrome or Edge recommended for Codespaces)
+- Stable internet connection (Codespaces requires continuous connectivity)
+- Projector or large display for the trainer's live demonstration
+- Whiteboard or shared digital workspace for writing the gateway command at lunch
+
+**Virtual delivery (Teams / Zoom):**
+
+- Ask pupils to join from a machine with a stable connection — Codespace lag is noticeable on congested connections
+- Use a shared digital whiteboard (Microsoft Whiteboard or Miro) to post the gateway command
+- Breakout rooms are useful for paired troubleshooting in Challenges 03–04
+
+**Trainer subscription:**
+
+The trainer needs a separate Azure subscription for live demonstrations. This avoids polluting pupil evidence with trainer actions and allows the trainer to demonstrate teardown without affecting pupil resources.
+
+## Dry-Run Recommendation
+
+<Aside type="caution" title="Dry-run Challenge 03 before delivering to a cohort">
+Run Challenge 03 on your own subscription at least once before class day. This:
+
+- Confirms swedencentral quota is available for your subscriptions
+- Warms subscription-level registrations (some Microsoft.Network providers take 5–10 min first time)
+- Gives you accurate timing for the gateway long pole
+- Lets you verify the teardown workflow works end to end
+
+Allow 2 hours for a full Challenge 03 + teardown dry-run.
+</Aside>

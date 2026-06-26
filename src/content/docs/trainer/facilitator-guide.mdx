@@ -1,0 +1,310 @@
+---
+title: Facilitator Guide
+description: Full 1-day run-of-show for the Module B Networking Microhack — timing table, per-challenge talk track, gateway deployment timing, and trainer checkpoints from 08:45 to 17:45.
+sidebar:
+  order: 1
+  label: Facilitator Guide
+---
+
+import { Aside, Steps, Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Format" icon="information">1-day classroom lab</Card>
+  <Card title="Duration" icon="clock">08:45 – 17:45 (7.5 hours of content)</Card>
+  <Card title="Challenges" icon="approve-check">7 challenges · 7 Module B controls</Card>
+  <Card title="Customer" icon="document">Contoso Financial Services (CFS)</Card>
+</CardGrid>
+
+## Run-of-Show — Full Day Timetable
+
+| Time | Block | Module B | Trainer action |
+| --- | --- | --- | --- |
+| 08:45 | Welcome and intros | — | Set context, introduce CFS, run icebreaker |
+| 09:00 | **Challenge 00** — Setup and CFS brief | Foundation | Demo OIDC setup; confirm all agents live |
+| 09:45 | **Challenge 01** — Requirements Assessment | B.1.1 | Demo `@requirements-analyst`; review challenger output |
+| 10:30 | Break (15 min) | — | Check pupil progress; address OIDC stragglers |
+| 10:45 | **Challenge 02** — Solution Design + WAR | B.2.1 + B.2.2 | Demo both agents; emphasise challenger review |
+| 12:00 | Lunch (45 min) | — | **Remind cohort: first command at 12:45 is gateway** |
+| 12:45 | **Challenge 03** — Deploy Hub and Spoke | B.3.1 + B.3.2 | Trigger gateway; demo `@iac-engineer`; what-if first |
+| 14:15 | Break (15 min) | — | Confirm gateways completed; watch for quota errors |
+| 14:30 | **Challenge 04** — Private Networking | B.3.2 | Demo edge deploy; show DNS from spoke VM |
+| 15:45 | **Challenge 05** — Validation and Testing | B.4.1 | Demo `@validation-engineer`; sign the sign-off doc |
+| 16:45 | Break (10 min) | — | Confirm test results saved before break |
+| 16:55 | **Challenge 06** — As-Built and Teardown | B.4.2 | Demo `@evidence-author`; trigger teardown last |
+| 17:45 | Retrospective and close | — | 10-min retro; re-delivery confidence check |
+
+<Aside type="danger" title="Gateway deployment — most critical timing action">
+At 12:00 (the start of lunch), tell the cohort: **"When you return at 12:45, your first command — before reading anything — is the gateway."** Write it on the board now:
+
+```bash
+gh workflow run deploy.yml -f component=gateway
+```
+
+VPN / Virtual WAN gateway provisioning takes 30–45 minutes. If pupils forget, they will be blocked during Challenge 03. The entire afternoon depends on this parallelism.
+</Aside>
+
+## Welcome Block (08:45–09:00)
+
+**Duration:** 15 minutes
+
+**Goal:** Set the CFS narrative, establish the day's rhythm, and confirm logistics.
+
+**Talk track:**
+
+- Introduce yourself and the microhack format (agent-driven, real Azure, 7 controls)
+- Read the CFS brief together — emphasise PSD2/GDPR constraints and the zero-public-IP requirement
+- Show the day's agenda on screen (use the Marp deck slide "The Day at a Glance")
+- Confirm Codespaces are opening and GitHub Copilot extension is enabled
+- Tell participants there are **human approval gates** — they decide, the agents assist
+
+**Checkpoint:** Every pupil has opened their Codespace before 09:00.
+
+## Challenge 00 — Setup and CFS Brief (09:00–09:45)
+
+**Duration:** 45 minutes · No evidence artifact required
+
+**Goal:** Every pupil has a running Codespace with agents live, OIDC verified, and a budget alert set.
+
+**Trainer demo (first 10 minutes):**
+
+<Steps>
+1. Show the dev container starting in Codespaces and confirm pre-installed tooling
+2. Walk through OIDC federated credential setup step by step — this is the most common failure point
+3. Show `@network-architect` responding in Copilot Chat
+4. Show the Azure MCP server responding (`@network-architect` can list resource groups)
+5. Set a budget alert on your trainer subscription as the live demo
+</Steps>
+
+**Talk track:**
+
+- Explain why OIDC is used instead of stored secrets — no credentials in GitHub, no rotation risk
+- Point out the three secrets required: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
+- Explain the GitHub Actions environment `lab` and why it gates secret access with reviewers
+- Show the `reference/cfs-scenario/` page so pupils understand the narrative before Challenge 01
+
+**Checkpoint at 09:40:** Every pupil has agents live and `az account show` returns their subscription.
+
+<Aside type="caution" title="Common issue: OIDC federated credential subject">
+The most common setup error is a wrong subject in the federated credential. The subject must match exactly:
+
+```
+repo:owner/repo-name:environment:lab
+```
+
+Check that the GitHub environment name in the federated credential matches the environment used in the GitHub Actions workflow (`lab`).
+</Aside>
+
+## Challenge 01 — Requirements Assessment (09:45–10:30)
+
+**Duration:** 45 minutes · **Evidence artifact: B.1.1**
+
+**Goal:** Produce a signed requirements assessment covering all 8 Module B topic areas.
+
+**Trainer demo (first 8 minutes):**
+
+<Steps>
+1. Invoke `@requirements-analyst` in Copilot Chat
+2. Trigger the `requirements-capture` skill to start the structured 8-topic interview
+3. Show 2–3 example exchanges — the agent asks about business requirements and hybrid connectivity
+4. Show `@challenger` reviewing the draft output and flagging a gap
+</Steps>
+
+**Talk track:**
+
+- The 8 topic areas are: business requirements, current state, target architecture, networking services, security and compliance, hybrid connectivity, identity and access, operational requirements
+- Emphasise that the auditor checks **all 8 are covered** — not just the networking sections
+- The human approval gate is when the pupil reads, corrects, and signs the document
+- The signed document IS the B.1.1 evidence — the agent assists, the pupil owns it
+
+**Checkpoint at 10:25:** Every pupil has a signed B.1.1 draft saved locally.
+
+## Challenge 02 — Solution Design + WAR (10:45–12:00)
+
+**Duration:** 75 minutes · **Evidence artifacts: B.2.1 + B.2.2**
+
+**Goal:** Produce an HLD with ALZ design areas mapped (B.2.1) and a WAF review across Security and Reliability (B.2.2).
+
+**Trainer demo — Part A: Solution Design (first 15 minutes):**
+
+<Steps>
+1. Invoke `@solution-designer` and share the CFS requirements from Challenge 01
+2. Use the `solution-design` skill to generate the HLD scaffold
+3. Show how the agent selects hub and spoke (Scenario 1) over vWAN — point out the rationale
+4. Highlight that the agent maps each ALZ design area: enrolment, identity, network, governance, security
+</Steps>
+
+**Trainer demo — Part B: WAF Review (minutes 30–45):**
+
+<Steps>
+1. Invoke `@waf-reviewer` with the `waf-review` skill, passing the HLD from Part A
+2. Show the Security pillar findings: no public endpoints, Firewall Premium IDPS, Private Link, NSG flow logs
+3. Show the Reliability pillar findings: AZ-redundant Firewall, AZ-redundant Gateway, ZRS storage
+4. Invoke `@challenger` to red-team the WAF review — show it finding additional risks
+</Steps>
+
+**Talk track:**
+
+- Stress that B.2.2 requires **at least 2 pillars** and Security + Reliability are the mandatory pair for CFS
+- Each finding needs a recommendation, not just a flag — auditors check for actionable output
+- The design decision log (produced in Challenge 06) will reference decisions made here
+- Good time to ask pupils: "Would your real customer approve this design?" before they sign off
+
+**Checkpoint at 11:55:** Every pupil has both B.2.1 and B.2.2 drafts approved.
+
+<Aside type="tip" title="Lunch announcement — gateway command">
+At 12:00, before dismissing for lunch, paste the following in the shared Teams / Slack channel and write it on the whiteboard:
+
+```bash
+gh workflow run deploy.yml -f component=gateway
+```
+
+Tell the cohort this is their **first command at 12:45** — not after reading the challenge, not after coffee. First thing.
+</Aside>
+
+## Challenge 03 — Deploy the Secure Hub and Spoke (12:45–14:15)
+
+**Duration:** 90 minutes · **Evidence artifacts: B.3.1 + B.3.2 (start)**
+
+**Goal:** Deploy the hub VNet, Azure Firewall Premium, Bastion Standard, and VPN Gateway.
+
+**First 2 minutes (BEFORE anything else):**
+
+Every pupil runs the gateway deployment immediately:
+
+```bash
+gh workflow run deploy.yml -f component=gateway
+```
+
+Then pupils confirm the workflow has started in the GitHub Actions UI before continuing.
+
+**Trainer demo — IaC review with `@iac-engineer` (minutes 5–30, while gateway builds):**
+
+<Steps>
+1. Open `infra/bicep/` and walk through the module structure with `@iac-engineer`
+2. Show the what-if preview: `gh workflow run deploy.yml -f component=gateway -f whatIfOnly=true`
+3. Point out AVM (Azure Verified Module) references in the Bicep files
+4. Show how to trigger the hub component while gateway is still building: `gh workflow run deploy.yml -f component=hub`
+</Steps>
+
+**Hub deployment sequence:**
+
+| Component | Command | When to trigger | Duration |
+| --- | --- | --- | --- |
+| gateway | `deploy.yml -f component=gateway` | 12:45 immediately | 30–45 min |
+| hub | `deploy.yml -f component=hub` | After gateway starts (parallel) | ~5 min |
+| spoke | `deploy.yml -f component=spoke` | After gateway completes | ~10 min |
+
+**Talk track:**
+
+- Show the GitHub Actions workflow run in the UI — pupils should be able to identify which step is running
+- Explain that the hub foundation (Log Analytics + hub VNet + Azure Firewall) deploys with EVERY stage and is idempotent
+- Point out `rg-cfs-hub-swc` in the Azure portal as the hub resource group
+
+**Checkpoint at 14:10:** Hub VNet, Azure Firewall, Bastion, and VPN Gateway are all provisioned.
+
+## Challenge 04 — Private Networking and Global Delivery (14:30–15:45)
+
+**Duration:** 75 minutes · **Evidence artifact: B.3.2 (complete)**
+
+**Goal:** Deploy Private Endpoints, App Gateway + WAF, and Front Door + WAF. Confirm all 9 networking services for B.3.2.
+
+**Trainer demo (first 15 minutes):**
+
+<Steps>
+1. Trigger the edge deployment: `gh workflow run deploy.yml -f component=edge`
+2. While it runs, use `@iac-engineer` to walk through the Private Endpoint Bicep module
+3. After deployment, SSH into the private VM via Bastion and run `nslookup vault.azure.com`
+4. Show the DNS response returns a private IP address — confirm Private Link is working
+5. Open the WAF policy in the Azure portal and walk through the managed OWASP ruleset
+</Steps>
+
+**Talk track:**
+
+- Private Endpoints for Key Vault and Storage are deployed in the spoke component — reconfirm this was done in Challenge 03
+- The internal Load Balancer provides HA for the spoke workload — show the backend pool
+- The end-to-end private path is: Front Door (premium, WAF) to App Gateway (WAF v2) to private spoke VM via internal LB
+- NSG flow logs write to the Log Analytics workspace deployed in the hub foundation
+
+**Checkpoint at 15:40:** All 9 networking services are confirmed deployed. B.3.2 evidence is complete.
+
+## Challenge 05 — Validation and Testing (15:45–16:45)
+
+**Duration:** 60 minutes · **Evidence artifacts: B.4.1 (test plan + sign-off)**
+
+**Goal:** Execute 6 mandatory tests and capture customer sign-off on the results.
+
+**Trainer demo (first 10 minutes):**
+
+<Steps>
+1. Invoke `@validation-engineer` and share the deployed resource list
+2. Show the test plan being generated — 6 mandatory test cases for CFS
+3. Execute test 2 (DNS resolution) live: SSH via Bastion, run nslookup inside the spoke VM
+4. Show test 3 (Firewall egress block) live: attempt a direct outbound connection from the spoke VM
+</Steps>
+
+**The 6 mandatory test cases:**
+
+| Test | What it proves | How to run |
+| --- | --- | --- |
+| Hub to spoke via Firewall | B.3.1 scenario connectivity | Azure Connection Monitor |
+| Private endpoint DNS | Zero public PaaS endpoints | nslookup from spoke VM via Bastion |
+| Firewall blocks egress | Central egress control | curl from spoke VM |
+| WAF blocks OWASP payload | WAF policy active | curl with SQL injection payload |
+| Front Door health probe | Global delivery path live | Azure portal health status |
+| Bastion SSH to private VM | No public IPs on compute | Bastion session from portal |
+
+**Talk track:**
+
+- The `B4.1_SignOff_CFS_v1.docx` requires a **trainer signature** as "customer" — this is the most important action before Challenge 06
+- Remind pupils to save their test evidence (screenshots or Connection Monitor export) before teardown
+- If any test fails, use `@validation-engineer` to diagnose and remediate before signing off
+
+**Checkpoint at 16:40:** All 6 tests are green and the sign-off document is signed.
+
+<Aside type="danger" title="Sign the sign-off document before break">
+The B.4.1 sign-off document requires a signature. Do this before the break at 16:45. Once resources are torn down in Challenge 06, the live evidence is gone.
+</Aside>
+
+## Challenge 06 — As-Built Documentation and Teardown (16:55–17:45)
+
+**Duration:** 50 minutes · **Evidence artifacts: B.4.2 (3 documents)**
+
+**Goal:** Document the deployed state with `@evidence-author` and then tear down all Azure resources.
+
+**Trainer demo (first 15 minutes):**
+
+<Steps>
+1. Invoke `@evidence-author` and let it query the live Azure environment via Azure MCP
+2. Show the as-built document being generated with actual IPs, SKUs, and deviations from the HLD
+3. Show the decision log capturing the hub-and-spoke-over-vWAN rationale from Challenge 02
+4. Show the operations runbook section on Firewall policy changes and certificate renewal
+</Steps>
+
+**Talk track:**
+
+- The as-built must reflect **actual deployed state** — not design intent. The agent queries Azure to get real values
+- The decision log references decisions made in Challenge 02 — remind pupils to check consistency
+- The operations runbook is a Day-2 artifact: it describes who does what after the engagement ends
+- **Teardown is the LAST action** — confirm evidence is saved before triggering it
+
+**Teardown procedure (last 10 minutes):**
+
+```bash
+gh workflow run teardown.yml -f confirm=DELETE
+```
+
+The token must be the **literal string `DELETE`**. Verify the workflow completes green in GitHub Actions before the session ends.
+
+**Checkpoint at 17:40:** All resources deleted. GitHub Actions teardown workflow shows green.
+
+## Retrospective (17:45)
+
+**Duration:** 15 minutes
+
+Run a structured retro with the cohort using the prompts in the Marp deck ("Retrospective Prompts" slide).
+
+End with the confidence check: *"Are you ready to deliver this to a partner cohort?"*
+
+<Aside type="tip" title="Half-day variant">
+For a half-day design-only delivery, run Challenges 00–02 and demo Challenges 03–06 from the solution keys in `solutions/`. The cut point is after Challenge 02 sign-off. Allow 3.5 hours for Challenges 00–02 including a 15-minute break.
+</Aside>

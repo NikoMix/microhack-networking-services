@@ -1,0 +1,409 @@
+---
+title: Troubleshooting and Reset
+description: Common pitfalls per challenge, recovery procedures, how to reset or redeploy individual components, teardown instructions, and agent debugging tips for the Module B Networking Microhack.
+sidebar:
+  order: 3
+  label: Troubleshooting & Reset
+---
+
+import { Aside, Steps, Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Most common issue" icon="warning">OIDC federated credential subject format</Card>
+  <Card title="Most critical timing" icon="clock">Gateway must fire at 12:45</Card>
+  <Card title="Reset command" icon="setting">`deploy.yml -f component=<name> -f whatIfOnly=true`</Card>
+  <Card title="Teardown" icon="approve-check">`teardown.yml -f confirm=DELETE`</Card>
+</CardGrid>
+
+## Quick Reference — Common Issues
+
+| Symptom | Challenge | Quick fix |
+| --- | --- | --- |
+| OIDC auth error in GitHub Actions | 00, 03 | Verify federated credential subject: `repo:owner/repo:environment:lab` |
+| Agent not responding in Copilot Chat | 00+ | Re-enable Copilot extension; check `@` prefix |
+| Quota error deploying Azure Firewall | 03 | Add `-f location=westeurope` |
+| Gateway deployment running over 45 min | 03 | Cancel and re-trigger; check region capacity |
+| DNS returns public IP from spoke VM | 04 | Add VNet link to private DNS zone |
+| Private endpoint shows unhealthy | 04 | Check NSG rules on the subnet |
+| WAF returns 403 on legitimate traffic | 04, 05 | Set WAF to Detection mode temporarily |
+| Teardown fails with "locked" error | 06 | Remove resource locks before re-triggering |
+| `@challenger` returns empty output | All | Summarise context first; reduce prompt length |
+| Astro build fails locally | All | Run `npm ci` then `npm run build` |
+
+## Challenge 00 — Setup Issues
+
+### OIDC Federated Credential Fails
+
+**Symptoms:** GitHub Actions workflow fails with `AADSTS700016` or `AADSTS7000215`.
+
+**Root cause:** The federated credential subject does not match the workflow's identity token.
+
+**Fix:**
+
+<Steps>
+1. In Azure portal, go to the app registration and open Certificates and secrets → Federated credentials
+2. Check the subject value exactly — it must be: `repo:<github-owner>/<repo-name>:environment:lab`
+3. Confirm the repo owner is the fork owner (the pupil's GitHub username), not the upstream repo
+4. Confirm the environment name is exactly `lab` (case-sensitive)
+5. Confirm the GitHub Actions environment named `lab` exists in the repository (Settings → Environments)
+6. Re-run the workflow after updating the federated credential
+</Steps>
+
+<Aside type="caution" title="Common mistake: upstream repo in subject">
+If a pupil forked the repo to `student-user/microhack-networking-services`, the federated credential subject must be `repo:student-user/microhack-networking-services:environment:lab` — NOT the upstream `NikoMix/microhack-networking-services`.
+</Aside>
+
+### Agent Not Responding
+
+**Symptoms:** `@requirements-analyst` or other agents produce no output or return an error.
+
+**Fixes (in order):**
+
+1. Confirm the GitHub Copilot extension is enabled in the Codespace (Extensions panel → GitHub Copilot)
+2. Confirm the participant has an active GitHub Copilot subscription (Individual, Business, or Enterprise)
+3. Reload the VS Code window (`Ctrl+Shift+P` → "Developer: Reload Window")
+4. Check `.github/agents/` — the agent definition files must be present and readable
+5. If using a non-default inference backend, confirm the environment variable is set correctly
+
+### Azure MCP Server Not Available
+
+**Symptoms:** `@network-architect` cannot list resources; MCP calls fail.
+
+**Fixes:**
+
+<Steps>
+1. Confirm Azure CLI is authenticated in the Codespace: `az account show`
+2. If not authenticated: `az login --use-device-code`
+3. Check `.vscode/mcp.json` is present and the Azure MCP server is configured
+4. Reload the MCP server connection in VS Code settings
+</Steps>
+
+## Challenge 01 — Requirements Issues
+
+### Agent Misses Topic Areas
+
+**Symptoms:** The B.1.1 draft from `@requirements-analyst` is missing one or more of the 8 topic areas.
+
+**Fix:**
+
+Invoke `@challenger` explicitly asking it to check all 8 topic areas are covered. If gaps are found, re-run the requirements capture skill for the missing areas and append to the document.
+
+The 8 topic areas are: business requirements, current state, target architecture, networking services, security and compliance, hybrid connectivity, identity and access, operational requirements.
+
+### Evidence Document Format
+
+**Symptoms:** Pupil is unsure what format the B.1.1 document must be in.
+
+**Clarification:** The format (Word, PDF, Markdown) is not specified by the audit standard. What matters is that the document exists, covers all 8 topic areas, and shows a human approval (pupil signature or dated review comment). The `@requirements-analyst` agent produces a structured Markdown draft that can be exported or copied into Word.
+
+## Challenge 02 — Design Issues
+
+### WAF Review Missing Recommendations
+
+**Symptoms:** `@waf-reviewer` produces a list of risks but no recommendations. The B.2.2 auditor check requires actionable recommendations.
+
+**Fix:** Append to the `@waf-reviewer` prompt: "For each finding, provide a specific, actionable recommendation for the CFS environment." Then re-run `@challenger` to verify recommendations are present.
+
+### Solution Design Does Not Cover All ALZ Areas
+
+**Symptoms:** The B.2.1 HLD draft misses one or more ALZ design areas.
+
+**Fix:** Use the `solution-design` skill explicitly and check the output against the ALZ design areas checklist:
+
+- Enterprise enrolment and Entra ID
+- Identity and access management
+- Network topology and connectivity
+- Resource organisation
+- Security, compliance, and monitoring
+
+If an area is missing, invoke `@solution-designer` with the specific area as context.
+
+## Challenge 03 — Deployment Issues
+
+### Gateway Deployment Times Out
+
+**Symptoms:** The `deploy.yml` workflow for `component=gateway` runs for more than 45 minutes without completing.
+
+**Steps:**
+
+<Steps>
+1. In GitHub Actions, check the workflow run log for the specific step that is stuck
+2. Check the Azure portal for the VPN Gateway resource — is it in a "Updating" or "Failed" state?
+3. If the workflow is stuck in a deployment step, cancel the workflow run in GitHub Actions
+4. Check for region capacity issues in the Azure portal (Activity log on the resource group)
+5. If swedencentral has capacity issues, switch to westeurope: `gh workflow run deploy.yml -f component=gateway -f location=westeurope`
+6. Re-trigger: `gh workflow run deploy.yml -f component=gateway`
+</Steps>
+
+<Aside type="danger" title="Do not re-trigger without checking state first">
+Before re-triggering a failed deployment, run with `-f whatIfOnly=true` to confirm the desired state. Re-triggering without checking can create duplicate resources or leave resources in a partially-deployed state.
+
+```bash
+gh workflow run deploy.yml -f component=gateway -f whatIfOnly=true
+```
+</Aside>
+
+### Quota Error on Azure Firewall or Public IPs
+
+**Symptoms:** Deployment fails with `QuotaExceeded` for Azure Firewall or Public IP Addresses.
+
+**Fix:**
+
+```bash
+# Switch to westeurope for all components:
+gh workflow run deploy.yml -f component=gateway -f location=westeurope
+gh workflow run deploy.yml -f component=hub -f location=westeurope
+gh workflow run deploy.yml -f component=spoke -f location=westeurope
+gh workflow run deploy.yml -f component=edge -f location=westeurope
+```
+
+Tell the cohort to use `westeurope` for all remaining deployments. The resource names and naming convention remain the same; only the region changes.
+
+### Partial Deployment — Hub Without Gateway
+
+**Symptoms:** The hub component was deployed but the gateway component has not completed. The spoke component fails because it depends on the hub VNet.
+
+**Fix:** Wait for the gateway workflow to complete (check GitHub Actions), then trigger the spoke component. Do not re-trigger the hub — it is idempotent but adds unnecessary time.
+
+### Invalid Component Name Error
+
+**Symptoms:** The workflow fails immediately with "invalid component" or similar error.
+
+**Root cause:** A pupil used a component name that does not exist.
+
+**Valid components are exactly:** `all` · `gateway` · `hub` · `spoke` · `edge`
+
+There is no `private-endpoints`, `compute`, `appgateway`, `frontdoor`, or `bastion` component. The spoke component deploys Private Endpoints and the internal LB; the edge component deploys App Gateway and Front Door.
+
+## Challenge 04 — Private Networking Issues
+
+### DNS Resolution Returns Public IP
+
+**Symptoms:** `nslookup vault.azure.com` from inside the spoke VM returns a public IP instead of a private IP.
+
+**Root cause:** The private DNS zone for Key Vault (`privatelink.vaultcore.azure.net`) is not linked to the spoke VNet.
+
+**Fix:**
+
+<Steps>
+1. In the Azure portal, go to Private DNS Zones
+2. Find `privatelink.vaultcore.azure.net`
+3. Click Virtual network links → Add link
+4. Link to the spoke VNet (`cfs-spoke-vnet-swc`)
+5. Wait 1–2 minutes for DNS propagation
+6. Re-run `nslookup vault.azure.com` from the spoke VM
+</Steps>
+
+### Private Endpoint Shows Unhealthy
+
+**Symptoms:** The Private Endpoint connection in the Azure portal shows "Disconnected" or "Pending approval".
+
+**Fix:**
+
+<Steps>
+1. Go to the Private Endpoint resource in the Azure portal
+2. Check the Connection state — if "Pending", the resource owner must approve it
+3. Go to the linked resource (Key Vault or Storage) → Networking → Private endpoint connections
+4. Approve the pending connection
+5. Re-check the Private Endpoint connection state after 1–2 minutes
+</Steps>
+
+### WAF Blocking Legitimate Traffic
+
+**Symptoms:** The Application Gateway WAF returns 403 for test requests that should succeed.
+
+**Fix:** Switch the WAF policy to Detection mode temporarily to identify the blocking rule:
+
+<Steps>
+1. In the Azure portal, go to Application Gateway → WAF policy
+2. Change the policy mode from Prevention to Detection
+3. Re-send the request and check the WAF logs in Log Analytics to identify the matching rule
+4. Add an exclusion for the matching rule if it is a false positive
+5. Switch back to Prevention mode after adding the exclusion
+</Steps>
+
+## Challenge 05 — Validation Issues
+
+### Connection Monitor Not Showing Results
+
+**Symptoms:** The Connection Monitor test shows "Unknown" status after 5 minutes.
+
+**Fix:**
+
+<Steps>
+1. Confirm the Azure Monitor agent is installed on the source VM (Network Watcher → Connection Monitor checks this)
+2. If the agent is missing, run: `az vm extension set --name AzureMonitorWindowsAgent` (or Linux equivalent) on the source VM
+3. Wait 5 minutes after agent installation for results to populate
+4. Re-check the Connection Monitor test results
+</Steps>
+
+### Test 3 Fails — Firewall Not Blocking Egress
+
+**Symptoms:** A `curl` from the spoke VM reaches the internet directly instead of being blocked by the Firewall.
+
+**Root cause:** The UDR (User-Defined Route) sending spoke subnet traffic to the Firewall is missing or not associated with the subnet.
+
+**Fix:**
+
+<Steps>
+1. In the Azure portal, go to Route Tables in the spoke VNet resource group
+2. Confirm a UDR exists with a `0.0.0.0/0` route pointing to the Azure Firewall private IP
+3. Confirm the UDR is associated with the spoke workload subnet
+4. If missing, create the UDR and re-test
+</Steps>
+
+## Challenge 06 — Teardown Issues
+
+### Teardown Workflow Fails with "Locked"
+
+**Symptoms:** The `teardown.yml` workflow fails with `ResourceGroupIsLocked` or `AuthorizationFailed`.
+
+**Fix:**
+
+<Steps>
+1. In the Azure portal, go to the resource group (`rg-cfs-hub-swc` or `rg-cfs-spoke-swc`)
+2. Go to Locks in the resource group settings
+3. Delete all locks
+4. Re-trigger the teardown: `gh workflow run teardown.yml -f confirm=DELETE`
+</Steps>
+
+### Teardown Fails — Partial Deletion
+
+**Symptoms:** The teardown workflow completes but some resources remain in the Azure portal.
+
+**Fix:**
+
+<Steps>
+1. Check the teardown workflow log for which resource failed to delete
+2. Manually delete the failing resource from the Azure portal
+3. If the resource group itself remains, delete it manually: `az group delete --name rg-cfs-hub-swc --yes --no-wait`
+4. Repeat for `rg-cfs-spoke-swc` if needed
+</Steps>
+
+<Aside type="caution" title="Budget alert remains after teardown">
+The budget alert created in Challenge 00 is scoped to the subscription, not to the resource groups. It will remain active after teardown — this is intentional as a cost guardrail for future deployments.
+</Aside>
+
+### Teardown Rejected — Wrong Confirm Token
+
+**Symptoms:** The `teardown.yml` workflow fails immediately with "confirmation token invalid".
+
+**Fix:** The confirmation token must be the **literal string `DELETE`** in uppercase. Not "delete", not "yes", not "confirm". Re-trigger with the exact value:
+
+```bash
+gh workflow run teardown.yml -f confirm=DELETE
+```
+
+## Resetting and Redeploying
+
+### How to Redeploy a Single Component
+
+If a component needs to be redeployed (e.g., a pupil accidentally deleted a resource), trigger that component specifically:
+
+```bash
+# Run what-if first to confirm the expected changes:
+gh workflow run deploy.yml -f component=spoke -f whatIfOnly=true
+
+# Then deploy:
+gh workflow run deploy.yml -f component=spoke
+```
+
+All components are idempotent — redeploying a component that already exists updates it to the desired state without deleting and recreating resources unnecessarily.
+
+### How to Reset the Entire Environment
+
+To reset to a clean state and start from Challenge 03:
+
+<Steps>
+1. Tear down all existing resources: `gh workflow run teardown.yml -f confirm=DELETE`
+2. Wait for teardown to complete (check GitHub Actions)
+3. Verify all resource groups are deleted in the Azure portal
+4. Restart from Challenge 03: `gh workflow run deploy.yml -f component=gateway`
+</Steps>
+
+Allow an additional hour for a full reset and redeploy (45 min gateway + 20 min remaining components).
+
+### What-If Preview Before Any Deployment
+
+Always use what-if to preview changes before a real deployment:
+
+```bash
+gh workflow run deploy.yml -f component=<name> -f whatIfOnly=true
+```
+
+This runs the Bicep deployment in what-if mode and shows what resources would be created, modified, or deleted. Use this to diagnose parameter errors without incurring costs.
+
+## Agent Debugging
+
+### Agent Produces Low-Quality Output
+
+**Symptoms:** Agent output is generic, missing CFS-specific details, or does not address the challenge requirements.
+
+**Fixes:**
+
+1. Ensure the agent has context about CFS — paste the CFS brief or reference `reference/cfs-scenario/`
+2. Use the skill file for that challenge (e.g., `requirements-capture`, `solution-design`) — skills provide structured prompts that guide agent behaviour
+3. Invoke `@challenger` after the primary agent to identify gaps and redirect
+
+### Context Window Overloaded
+
+**Symptoms:** Agent produces truncated output, stops mid-document, or returns an error about context length.
+
+**Fix:** Start a new Copilot Chat window and provide a condensed summary of the prior context rather than pasting the full conversation. Agents work best with focused, relevant context rather than the entire session history.
+
+### Challenger Returns No Output
+
+**Symptoms:** `@challenger` produces an empty response or just acknowledges the input without reviewing it.
+
+**Fix:** Be explicit in the challenger prompt:
+
+```
+@challenger Review the following B.2.1 HLD draft for the CFS engagement.
+Check that all ALZ design areas are covered and that the networking design
+satisfies the PSD2/GDPR constraints. Identify the top 3 risks and gaps.
+
+[paste the draft here]
+```
+
+The more specific the challenge scope, the more useful the challenger output.
+
+## Local Build Issues
+
+### `npm run build` Fails
+
+**Fix:**
+
+```bash
+cd <repo-root>
+npm ci
+npm run build
+```
+
+If the build still fails, check the error output for the specific MDX file causing the issue. Common causes:
+
+- Unclosed JSX component tags in `.mdx` files
+- Invalid front matter YAML
+- Missing import statement for a Starlight component
+
+### `npm run slides` Fails
+
+**Fix:**
+
+```bash
+npm ci
+npm run slides
+```
+
+The `slides/` directory must contain at least one `.md` file with `marp: true` in the front matter. If the directory is missing, Marp will error.
+
+### `npm run lint:md` Reports Errors
+
+Common markdownlint errors and fixes:
+
+| Rule | Error | Fix |
+| --- | --- | --- |
+| MD022 | Heading not surrounded by blank lines | Add blank line before and after every heading |
+| MD032 | List not surrounded by blank lines | Add blank line before and after every list |
+| MD025 | Multiple top-level headings | Use only one `#` (H1) per `.md` file |
+| MD058 | Table not surrounded by blank lines | Add blank line before and after every table |
+| MD035 | Inconsistent horizontal rule style | Use only `---` for thematic breaks |
