@@ -18,13 +18,14 @@ with pupils until after Challenge 03 is complete.
 ```bash
 # Resource groups
 rg-cfs-hub-swc    (Sweden Central)
-rg-cfs-app-swc    (Sweden Central)
+rg-cfs-spoke-swc  (Sweden Central)
+rg-cfs-mgmt-swc   (Sweden Central)
 
 # Hub resources
 cfs-hub-vnet-swc       VirtualNetwork  10.0.0.0/16
 cfs-hub-afw-swc        AzureFirewall   Premium SKU, IDPS Alert+Deny
 cfs-hub-bas-swc        BastionHost     Standard SKU
-cfs-hub-gw-swc         VirtualNetworkGateway  VpnGw1 or VpnGw2
+cfs-hub-vpngw-swc      VirtualNetworkGateway  VpnGw1 or VpnGw2
 
 # Spoke resources
 cfs-app-vnet-swc       VirtualNetwork  10.1.0.0/16
@@ -35,7 +36,7 @@ cfs-app-vnet-swc/cfs-app-to-hub    Connected
 
 # Route tables
 cfs-hub-rt-swc   applied to GatewaySubnet  (no default route override)
-cfs-app-rt-swc   applied to snet-app, snet-compute  0.0.0.0/0 → 10.0.1.4 (Firewall)
+cfs-app-rt-swc   applied to workload, compute subnets  0.0.0.0/0 → 10.0.0.4 (Firewall)
 ```
 
 ## What-if output — expected changes
@@ -55,10 +56,12 @@ A correct `what-if` output should show:
 
 | Phase | Action | Duration |
 |---|---|---|
-| T+0 | `gh workflow run deploy.yml -f component=gateway` | 0 min (trigger only) |
-| T+0 → T+40 | Continue challenges (what-if, hub deploy, spoke deploy, evidence) | 40 min |
-| T+40 | Gateway provisioning completes | validate |
-| T+45 | Validate gateway in Part D of challenge | 5 min |
+| T+0 | `gh workflow run deploy.yml -f whatIfOnly=true` | 0 min (trigger preview) |
+| T+5 | Review what-if output with iac-engineer + challenger | 5 min |
+| T+10 | `gh workflow run deploy.yml -f whatIfOnly=false` | 0 min (trigger deploy) |
+| T+10 → T+55 | Continue challenges (address review, evidence generation) | 45 min |
+| T+55 | Full deployment completes (VPN Gateway is last) | validate |
+| T+60 | Validate all resources in Parts B–D of challenge | 10 min |
 
 **If gateway is still provisioning at validation time**: Continue to evidence generation (Part E)
 and come back to gateway validation. Do not block the class.
@@ -90,7 +93,7 @@ az network firewall policy show -n cfs-hub-afwp-swc -g rg-cfs-hub-swc \
 | Peering shows Disconnected | One side created before the other | Delete both peerings and recreate in the same Bicep deployment |
 | Firewall created as Standard instead of Premium | Wrong SKU in parameters | Update `firewallSku` parameter to `Premium`; redeploy |
 | Route on GatewaySubnet pointing to Firewall | Misconfigured UDR | Remove the UDR from GatewaySubnet — this breaks BGP; spoke UDRs only |
-| Gateway takes >60 min | Rare Azure provisioning delay | Wait; do not cancel; retrigger only if run shows failed |
+| Gateway takes >60 min | Rare Azure provisioning delay | Wait; do not cancel; set `deployVpnGateway = false` in `lab.bicepparam` and redeploy only if run shows failed |
 
 ## Grading hints for B.3.1
 

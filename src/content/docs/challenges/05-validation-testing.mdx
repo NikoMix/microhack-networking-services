@@ -108,15 +108,15 @@ The test plan covers all four security layers of the CFS deployment:
      --name cfs-hub-nsg-flowlog \
      --nsg cfs-hub-nsg-swc \
      --resource-group rg-cfs-hub-swc \
-     --storage-account cfsstswc \
+     --storage-account $ST_NAME \
      --enabled true \
      --format JSON \
      --log-version 2 \
      --retention 30 \
      --traffic-analytics true \
-     --workspace cfs-law-swc
+     --workspace cfs-mgmt-law-swc
    ```
-   Repeat for the spoke NSG (`cfs-app-nsg-swc`).
+   Repeat for the spoke NSG (`cfs-app-nsg-swc` in `rg-cfs-spoke-swc`).
 
 3. Confirm flow logs are active:
    ```bash
@@ -163,15 +163,17 @@ The test plan covers all four security layers of the CFS deployment:
 
    **TC-03: Private DNS resolution**
    ```bash
+   # Discover the dynamic Key Vault name first
+   KV_NAME=$(az keyvault list -g rg-cfs-spoke-swc --query '[0].name' -o tsv)
    # From spoke compute (via Bastion)
-   nslookup cfs-kv-swc.vault.azure.net
-   # Expected: 10.1.x.x private IP (not the public Azure IP)
+   nslookup ${KV_NAME}.vault.azure.net
+   # Expected: 10.1.1.x private IP (not the public Azure IP)
    ```
 
    **TC-04: No public access to Key Vault**
    ```bash
    # From outside the VNet (e.g. Cloud Shell in a separate subscription)
-   curl -s "https://cfs-kv-swc.vault.azure.net/keys?api-version=7.4"
+   curl -s "https://${KV_NAME}.vault.azure.net/keys?api-version=7.4"
    # Expected: 403 Forbidden (network ACL denies public access)
    ```
 

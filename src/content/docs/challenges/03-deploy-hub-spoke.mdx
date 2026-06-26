@@ -1,6 +1,6 @@
 ---
 title: "Challenge 03 — Deploy the Secure Hub & Spoke"
-description: Deploy the CFS hub & spoke landing zone — VNet peering, Azure Firewall, Bastion, and VPN/VWAN gateway — using the iac-engineer agent and GitHub Actions OIDC. Start the gateway deployment first to avoid idle wait time.
+description: Deploy the complete CFS hub & spoke landing zone — all nine networking services in a single GitHub Actions run using the iac-engineer agent, what-if preview, and OIDC. VPN Gateway takes 30–45 minutes; kick off the full deploy first.
 sidebar:
   order: 4
   label: "03 · Deploy Hub & Spoke"
@@ -15,28 +15,44 @@ import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/
   <Card title="Evidence artifacts" icon="document">`B3.1_ImplementationPlan_CFS_v1.docx` · `B3.2_ServiceEvidence_CFS_v1.docx`</Card>
 </CardGrid>
 
-<Aside type="danger" title="🚀 START THE GATEWAY DEPLOYMENT FIRST — before reading anything else">
-Azure VPN / Virtual WAN gateways take **30–45 minutes** to provision. **Your first action
-in this challenge is to kick off the gateway deployment**, then read the rest of the challenge
-and continue while it builds. Do **not** wait idle — the agenda depends on this parallelism.
+<Aside type="danger" title="🚀 DO THIS FIRST — preview, then kick off the full deploy">
+A **single** GitHub Actions run deploys the entire CFS hub & spoke stack (9 Azure networking
+services, one idempotent Bicep file). The VPN Gateway is the long pole (~30–45 min). Your
+first two actions are:
 
 ```bash
-gh workflow run deploy.yml -f component=gateway
+# 1 — Preview only (takes ~5 min; review the output with the agents)
+gh workflow run deploy.yml -f whatIfOnly=true
+gh run watch
+
+# 2 — Once the preview looks good, kick off the real deploy
+gh workflow run deploy.yml -f whatIfOnly=false
+# Don't wait — continue reading while it provisions in the background.
 ```
-Then continue to Part A.
+
+Then jump to Part 0 to review the what-if output while the stack deploys.
 </Aside>
 
 ## Objectives
 
-Deploy the four core hub networking resources for CFS to your Azure subscription:
+Deploy the complete CFS secure hub & spoke landing zone. A single call to
+`infra/bicep/main.bicep` with `infra/bicep/parameters/lab.bicepparam` provisions all
+nine networking services in dependency order:
 
-1. **Hub VNet** (`cfs-hub-vnet-swc`) with spoke peering
-2. **Azure Firewall Premium** (`cfs-hub-afw-swc`) — central egress and segmentation
+1. **Hub VNet** (`cfs-hub-vnet-swc`) — subnets, UDRs, NSGs
+2. **Azure Firewall Premium** (`cfs-hub-afw-swc`) — central egress and east-west segmentation
 3. **Azure Bastion Standard** (`cfs-hub-bas-swc`) — private admin access, no public IPs on compute
-4. **VPN / Virtual WAN Gateway** (`cfs-hub-gw-swc`) — hybrid connectivity to branches
+4. **VPN Gateway** (`cfs-hub-vpngw-swc`) — hybrid connectivity to CFS branches
+5. **Spoke VNet** (`cfs-app-vnet-swc`) — with UDRs, NSGs, and bidirectional peering
+6. **Private DNS zones** — linked to spoke for Key Vault and Storage resolution
+7. **Key Vault + Storage** — private endpoint, no public network access
+8. **Private compute VM** (`cfs-app-vm-swc`) + internal Load Balancer (`cfs-app-ilb-swc`)
+9. **Application Gateway + WAF** (`cfs-app-agw-swc`) + **Azure Front Door** (`cfs-edge-afd-swc`)
 
-This challenge satisfies **B.3.1** (scenario implementation) and starts evidence for
-**B.3.2** (≥5 native Azure networking services). Challenge 04 completes the B.3.2 service count.
+**Challenge 04** is dedicated to verifying and exploring all these services.
+
+This challenge satisfies **B.3.1** (scenario implementation) and begins evidence for
+**B.3.2** (≥5 native Azure networking services). Challenge 04 completes the B.3.2 count.
 
 ## Module B controls
 
@@ -45,155 +61,158 @@ This challenge satisfies **B.3.1** (scenario implementation) and starts evidence
 > The partner has implemented at least one of the five Module B network scenarios for the
 > customer engagement and can demonstrate the deployment in the customer's Azure environment.
 
-CFS covers **Scenario 1** (secure network infrastructure) and **Scenario 2** (on-prem/branch
-connectivity) in this challenge. Scenario 4 (global delivery) is completed in Challenge 04.
+CFS covers **Scenario 1** (secure network infrastructure), **Scenario 2** (on-prem/branch
+connectivity), and **Scenario 4** (global delivery) in this single deployment.
 
 ### B.3.2 — ≥5 Native Azure Networking Services
 
 > The partner's implementation uses five or more of the native Azure networking services
 > identified in the Advanced Specialization catalogue.
 
-Services deployed in this challenge: Virtual Network + VNet Peering, Azure Firewall,
-Azure Bastion, VPN Gateway (or Azure Virtual WAN). Challenge 04 adds Private Link,
-Application Gateway + WAF, Azure Front Door + WAF, and Azure Load Balancer (total: 8+).
+All **9+ services** deploy in one run. Challenge 04 maps each to a B.3.2 audit entry.
 
 ## Agents and skills used
 
 | Agent / Skill | File | Role |
 |---|---|---|
-| `iac-engineer` | `.github/agents/iac-engineer.agent.md` | Reviews/adjusts Bicep parameters and validates `what-if` output |
+| `iac-engineer` | `.github/agents/iac-engineer.agent.md` | Reviews parameters and `what-if` output |
 | `challenger` | `.github/agents/challenger.agent.md` | Reviews deployment plan for security gaps |
 | Skill: `b31-deploy.prompt.md` | `.github/prompts/b31-deploy.prompt.md` | Deployment workflow prompts |
 
 ## IaC reference
 
-All Bicep lives under `infra/bicep/`. The GitHub Actions workflow is `.github/workflows/deploy.yml`.
+A single top-level Bicep file orchestrates all modules — there is **no per-component flag**:
 
-| Module | Resource | Location |
+| File | What it deploys |
+|---|---|
+| `infra/bicep/main.bicep` | Subscription-scoped orchestration — resource groups, all modules |
+| `infra/bicep/parameters/lab.bicepparam` | All lab values — region, naming, SKUs, address space |
+| `infra/bicep/modules/hub-network.bicep` | Hub VNet, subnets, UDRs, NSGs |
+| `infra/bicep/modules/firewall.bicep` | Azure Firewall Premium + Firewall Policy |
+| `infra/bicep/modules/bastion.bicep` | Azure Bastion Standard |
+| `infra/bicep/modules/vpn-gateway.bicep` | VPN Virtual Network Gateway |
+| `infra/bicep/modules/spoke-network.bicep` | App spoke VNet + NSGs |
+| `infra/bicep/modules/peering.bicep` | Hub-spoke VNet peering (bidirectional) |
+| `infra/bicep/modules/private-dns.bicep` | Private DNS zones + VNet links |
+| `infra/bicep/modules/key-vault.bicep` | Key Vault + private endpoint |
+| `infra/bicep/modules/storage.bicep` | Storage account + private endpoint |
+| `infra/bicep/modules/compute.bicep` | Private VM + internal Load Balancer |
+| `infra/bicep/modules/app-gateway.bicep` | Application Gateway WAF_v2 |
+| `infra/bicep/modules/front-door.bicep` | Azure Front Door Premium + WAF |
+| `infra/bicep/modules/monitoring.bicep` | Log Analytics workspace |
+| `infra/bicep/modules/network-watcher.bicep` | Network Watcher + NSG flow logs |
+
+## Part 0 — Review the what-if output (while the full deploy runs)
+
+<Aside type="note" title="Already kicked off?">
+If you followed the banner at the top, both runs are queued. Use this Part to review the
+what-if output with the agents while the deployment runs in the background.
+</Aside>
+
+<Steps>
+1. Confirm the what-if run completed:
+   ```bash
+   gh run list --workflow deploy.yml --limit 3
+   ```
+
+2. Ask the `iac-engineer` agent to review the what-if output:
+   ```
+   @iac-engineer Review the what-if output from the last deploy.yml run.
+   Confirm all resources follow cfs-<role>-<type>-swc naming,
+   region is swedencentral, and no resource has an unexpected public IP.
+   ```
+
+3. Invoke the challenger on the plan:
+   ```
+   @challenger Review the CFS hub & spoke deployment plan. Flag any resources
+   with public IPs that are not Azure Firewall, Bastion, or VPN Gateway PIPs.
+   ```
+</Steps>
+
+## Part A — Understand the address space and subnet layout
+
+While the deployment runs, review the CFS address plan from `main.bicep`:
+
+| VNet | Address space | Subnets |
 |---|---|---|
-| `infra/bicep/hub/main.bicep` | Hub VNet, Firewall, Bastion, route tables | `infra/bicep/hub/` |
-| `infra/bicep/hub/gateway.bicep` | VPN / VWAN Gateway | `infra/bicep/hub/` |
-| `infra/bicep/spoke/main.bicep` | App spoke VNet, NSGs | `infra/bicep/spoke/` |
-| `infra/bicep/main.bicep` | Top-level orchestration | `infra/bicep/` |
+| `cfs-hub-vnet-swc` | `10.0.0.0/16` | AzureFirewallSubnet `10.0.0.0/26` · AzureBastionSubnet `10.0.1.0/26` · GatewaySubnet `10.0.2.0/27` |
+| `cfs-app-vnet-swc` | `10.1.0.0/16` | workload `10.1.0.0/24` · privateEndpoints `10.1.1.0/24` · appGateway `10.1.2.0/24` · loadBalancer `10.1.3.0/24` |
 
-Parameters file: `infra/bicep/parameters/lab.bicepparam` — do not hardcode values here.
-
-## Part 0 — Start the gateway NOW (already done if you followed the banner above)
+The hub route table forces all spoke egress through the Firewall private IP (`10.0.0.4`).
+The GatewaySubnet must **not** have a default route pointing to the Firewall — this would
+break BGP routing.
 
 <Steps>
-1. Trigger the gateway deployment immediately:
-   ```bash
-   gh workflow run deploy.yml -f component=gateway -f location=swedencentral
-   gh run watch
-   ```
-2. While the gateway builds, continue to Part A. You will validate the gateway in the
-   "Validation" section at the end of this challenge.
-</Steps>
+1. Open `infra/bicep/parameters/lab.bicepparam` to review the deployment parameters.
 
-## Part A — Review and parameterise the Bicep
-
-<Steps>
-1. Ask the `iac-engineer` agent to review the hub parameters:
+2. Ask the agent to explain the design decision:
    ```
-   @iac-engineer Review infra/bicep/parameters/lab.bicepparam for the CFS hub deployment.
-   Confirm naming follows cfs-<role>-<type>-swc, region is swedencentral, and env=lab tag is set.
-   ```
-2. Open `infra/bicep/parameters/lab.bicepparam` and confirm:
-   - `location = 'swedencentral'`
-   - `hubVnetName = 'cfs-hub-vnet-swc'`
-   - `firewallName = 'cfs-hub-afw-swc'`
-   - `bastionName = 'cfs-hub-bas-swc'`
-   - `tags = { environment: 'lab', workload: 'cfs' }`
-3. Run `what-if` validation:
-   ```bash
-   az deployment sub what-if \
-     --location swedencentral \
-     --template-file infra/bicep/main.bicep \
-     --parameters infra/bicep/parameters/lab.bicepparam \
-     --name "cfs-hub-whatif-$(date +%s)"
-   ```
-4. Review the `what-if` output with the agent:
-   ```
-   @iac-engineer Review this what-if output. Are there any resources that should not be
-   created? Any naming deviations? Any public IP resources outside of expected ones?
-   ```
-5. Invoke the challenger on the plan:
-   ```
-   @challenger Review the what-if output for the CFS hub deployment. Flag any resources
-   with public IPs that are not Azure Firewall, Bastion, or a VPN gateway public IP.
+   @iac-engineer Explain the hub-spoke address design in infra/bicep/main.bicep.
+   Why is the GatewaySubnet excluded from the spoke-bound UDR?
    ```
 </Steps>
 
-## Part B — Deploy the hub VNet, Firewall, and Bastion
+## Part B — Monitor and verify the deployment
 
 <Steps>
-1. Trigger the full hub deployment:
-   ```bash
-   gh workflow run deploy.yml -f component=hub -f location=swedencentral
-   ```
-   Or from the GitHub Actions UI: **Actions → deploy.yml → Run workflow**.
-
-2. Monitor the deployment:
+1. Monitor the running deployment:
    ```bash
    gh run watch
    ```
+   The full run typically completes in **50–65 minutes** (VPN Gateway is the slowest resource).
 
-3. Verify resources in Azure Portal or CLI after the run succeeds:
+2. Once the workflow shows `completed`, verify hub resources:
    ```bash
    az network vnet list -g rg-cfs-hub-swc -o table
    az network firewall list -g rg-cfs-hub-swc -o table
    az network bastion list -g rg-cfs-hub-swc -o table
    ```
 
-4. Confirm routing: the hub route table should force all spoke traffic through the Firewall:
+3. Confirm the UDR forces spoke egress to the Firewall:
    ```bash
    az network route-table route list \
      --route-table-name cfs-hub-rt-swc -g rg-cfs-hub-swc -o table
+   # Expected: 0.0.0.0/0 → 10.0.0.4 (Firewall private IP)
    ```
-   The default route `0.0.0.0/0` should point to the Firewall private IP.
 </Steps>
 
-## Part C — Deploy the spoke and configure VNet peering
+## Part C — Verify spoke and VNet peering
 
 <Steps>
-1. Deploy the app spoke:
+1. Verify spoke VNet and peering:
    ```bash
-   gh workflow run deploy.yml -f component=spoke -f location=swedencentral
-   ```
-
-2. Verify VNet peering is bidirectional and connected:
-   ```bash
+   az network vnet list -g rg-cfs-spoke-swc -o table
    az network vnet peering list \
      --vnet-name cfs-hub-vnet-swc -g rg-cfs-hub-swc -o table
    az network vnet peering list \
-     --vnet-name cfs-app-vnet-swc -g rg-cfs-app-swc -o table
+     --vnet-name cfs-app-vnet-swc -g rg-cfs-spoke-swc -o table
    ```
    Both peerings should show state `Connected`.
 
-3. Confirm the spoke route table forces egress through the hub Firewall (User-Defined Route):
+2. Confirm the spoke route table forces egress through the hub Firewall (UDR):
    ```bash
    az network route-table route list \
-     --route-table-name cfs-app-rt-swc -g rg-cfs-app-swc -o table
+     --route-table-name cfs-app-rt-swc -g rg-cfs-spoke-swc -o table
    ```
 </Steps>
 
-## Part D — Validate the gateway (when ready)
+## Part D — Validate the VPN Gateway
 
 <Aside type="note" title="Gateway timing">
-If the gateway deployment from Part 0 is still running, continue to the evidence section
-and come back here once `gh run watch` shows the gateway run as **completed**.
+If the gateway is still provisioning, continue to Part E (evidence) and return here once
+`gh run watch` shows the deployment as **completed**.
 </Aside>
 
 <Steps>
-1. Verify the VPN gateway is provisioned:
+1. Verify the VPN Gateway is provisioned:
    ```bash
    az network vnet-gateway show \
-     -n cfs-hub-gw-swc -g rg-cfs-hub-swc \
+     -n cfs-hub-vpngw-swc -g rg-cfs-hub-swc \
      --query '{name:name, provisioningState:provisioningState, sku:sku.name}' -o json
    ```
    Expected: `provisioningState: Succeeded`.
 
-2. Note the gateway's public IP for the implementation plan artifact.
+2. Note the gateway public IP for the implementation plan artifact.
 </Steps>
 
 ## Part E — Document the implementation (B.3.1 evidence)
@@ -208,8 +227,8 @@ and come back here once `gh run watch` shows the gateway run as **completed**.
 
 2. Generate the service evidence document (B.3.2):
    ```
-   @evidence-author List all deployed Azure networking services for CFS so far,
-   with their resource names, resource groups, and service purpose for the B.3.2 artifact.
+   @evidence-author List all deployed Azure networking services for CFS,
+   with resource names, resource groups, and service purpose for the B.3.2 artifact.
    ```
 
 3. Fill in `evidence-templates/B3.1_ImplementationPlan_CFS_v1.docx` and
@@ -218,14 +237,18 @@ and come back here once `gh run watch` shows the gateway run as **completed**.
 
 ## Services deployed in this challenge
 
+All nine services deploy in the single workflow run. Challenge 04 verifies them all:
+
 | Service | Resource name | Count toward B.3.2 |
 |---|---|---|
 | Virtual Network + VNet Peering | `cfs-hub-vnet-swc`, `cfs-app-vnet-swc` | ✅ Service 1 |
 | Azure Firewall Premium | `cfs-hub-afw-swc` | ✅ Service 2 |
 | Azure Bastion Standard | `cfs-hub-bas-swc` | ✅ Service 3 |
-| VPN Gateway (or Azure Virtual WAN) | `cfs-hub-gw-swc` | ✅ Service 4 |
-
-Challenge 04 adds: Private Link, App Gateway + WAF, Front Door + WAF → total ≥7 services.
+| VPN Gateway | `cfs-hub-vpngw-swc` | ✅ Service 4 |
+| Private Link / Private Endpoints | Key Vault + Storage (unique names per subscription) | ✅ Service 5 |
+| Azure Load Balancer (Internal) | `cfs-app-ilb-swc` | ✅ Service 6 |
+| Application Gateway + WAF v2 | `cfs-app-agw-swc` | ✅ Service 7 |
+| Azure Front Door Premium + WAF | `cfs-edge-afd-swc` | ✅ Service 8 |
 
 ## Validation checklist
 
@@ -251,13 +274,18 @@ Challenge 04 adds: Private Link, App Gateway + WAF, Front Door + WAF → total �
 | Resource | Estimated cost (full day) |
 |---|---|
 | Azure Firewall Premium | ~€25–30 |
-| VPN Gateway (Basic/VpnGw1) | ~€5–10 |
+| VPN Gateway (VpnGw1) | ~€5–10 |
 | Azure Bastion Standard | ~€5–8 |
-| Public IPs (x3) | ~€1 |
-| **Total this challenge** | **~€36–49** |
+| Application Gateway WAF_v2 | ~€8–12 |
+| Azure Front Door Premium | ~€5–8 |
+| Internal Load Balancer | ~€2 |
+| Private Endpoints (x2) | ~€1 |
+| Public IPs (x4) | ~€1 |
+| **Total this challenge** | **~€51–72** |
 
 <Aside type="tip" title="Trainer tip">
-If gateway deployment fails due to quota, fall back to a policy-driven local network
-gateway only (no provisioned gateway) and show the VWAN portal experience as a demo.
+If gateway deployment fails due to quota, set `deployVpnGateway = false` in
+`lab.bicepparam` and redeploy — the rest of the stack will still deploy. Show the VWAN
+portal experience as a demo. If Front Door capacity is an issue, set `deployFrontDoor = false`.
 See [Solution 03](../../solutions/03-deploy-hub-spoke/) for quota-bypass options.
 </Aside>

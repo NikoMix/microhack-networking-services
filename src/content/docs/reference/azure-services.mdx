@@ -57,7 +57,7 @@ The "Why for CFS" column maps directly to the requirements from B.1.1.
 | Attribute | Detail |
 |---|---|
 | **What it is** | Azure VPN Gateway: site-to-site IPsec/IKE VPN to on-prem/branch. Azure Virtual WAN: hub-managed any-to-any connectivity at scale. |
-| **CFS resource name** | `cfs-hub-gw-swc` |
+| **CFS resource name** | `cfs-hub-vpngw-swc` |
 | **Why for CFS** | CFS has 3 branch offices requiring always-on connectivity. VPN Gateway (IKEv2, BGP) connects branches in the lab. VWAN is documented as the production recommendation for >5 branches. |
 | **Module B controls** | B.3.1, B.3.2 (Service 4) |
 | **Key config for lab** | SKU: VpnGw1 · Generation: Generation2 · BGP: enabled (ASN 65515) · Note: 30–45 min to provision — **start this first** |
@@ -68,7 +68,7 @@ The "Why for CFS" column maps directly to the requirements from B.1.1.
 | Attribute | Detail |
 |---|---|
 | **What it is** | Private Link brings Azure PaaS services onto your VNet using a private IP. Private Endpoints are the network interface that connects to a Private Link resource. |
-| **CFS resource names** | `pe-kv-swc` (Key Vault), `pe-st-swc` (Storage), `pe-sql-swc` (SQL) |
+| **CFS resource names** | Key Vault + Storage (unique names per subscription — use `az keyvault list` / `az storage account list` to discover) |
 | **Why for CFS** | PSD2 and CFS policy require zero public PaaS exposure. Private Endpoints combined with `publicNetworkAccess: Disabled` on the PaaS resource ensure all traffic stays on the private network. |
 | **Module B controls** | B.3.1, B.3.2 (Service 5), B.4.1 (tested) |
 | **Key config for lab** | Private DNS Zones: one per service type, VNet-linked to spoke · `publicNetworkAccess: Disabled` on all target resources · NSG on PE subnet optional but recommended |
@@ -82,7 +82,7 @@ The "Why for CFS" column maps directly to the requirements from B.1.1.
 | **CFS resource name** | `cfs-app-ilb-swc` |
 | **Why for CFS** | Distributes traffic across multiple private compute instances in the app spoke. Internal SKU ensures no public exposure; Standard SKU enables zone redundancy for the 99.9% SLA target. |
 | **Module B controls** | B.3.2 (Service 6) |
-| **Key config for lab** | SKU: Standard · Frontend: private IP from `snet-app` · Backend pool: spoke compute VMs · Health probe: HTTP port 80 |
+| **Key config for lab** | SKU: Standard · Frontend: private IP `10.1.3.10` from `loadBalancer` subnet · Backend pool: spoke compute VMs · Health probe: HTTP port 80 |
 | **WAF pillar** | Reliability: distributes load; enables instance replacement without downtime |
 
 ### 7 — Application Gateway + WAF v2
@@ -93,7 +93,7 @@ The "Why for CFS" column maps directly to the requirements from B.1.1.
 | **CFS resource name** | `cfs-app-agw-swc` |
 | **Why for CFS** | CFS's external-facing application requires application-layer DDoS and OWASP protection before traffic reaches the backend. App Gateway sits in the spoke, in front of the internal Load Balancer. |
 | **Module B controls** | B.3.1, B.3.2 (Service 7), B.4.1 (WAF tested) |
-| **Key config for lab** | SKU: WAF_v2 · WAF mode: Prevention (not Detection) · Ruleset: OWASP 3.2 · Dedicated subnet: `snet-appgw` (/24) · Backend pool: internal Load Balancer frontend IP |
+| **Key config for lab** | SKU: WAF_v2 · WAF mode: Prevention (not Detection) · Ruleset: OWASP 3.2 · Dedicated subnet: `appGateway` (`10.1.2.0/24`) · Backend pool: internal Load Balancer frontend IP (`10.1.3.10`) |
 | **WAF pillar** | Security: OWASP protection; Reliability: zone-redundant v2 SKU |
 
 ### 8 — Azure Front Door Premium + WAF Policy
@@ -101,7 +101,7 @@ The "Why for CFS" column maps directly to the requirements from B.1.1.
 | Attribute | Detail |
 |---|---|
 | **What it is** | Global anycast CDN and load balancer with built-in WAF, DDoS protection, and Private Link to backend origins |
-| **CFS resource names** | `cfs-afd-profile`, `cfs-app-endpoint` |
+| **CFS resource names** | `cfs-edge-afd-swc` (profile) |
 | **Why for CFS** | CFS serves customers across the EU and must provide low-latency, DDoS-protected global delivery. Front Door Premium's Private Link origin connects to App Gateway without exposing it to the internet. |
 | **Module B controls** | B.3.1, B.3.2 (Service 8), B.4.1 (WAF tested) |
 | **Key config for lab** | SKU: Premium (required for Private Link origin) · WAF policy: Prevention mode · Origin: App Gateway via Private Link approval · Custom domain: optional in lab |
