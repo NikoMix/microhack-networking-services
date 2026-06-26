@@ -8,7 +8,7 @@ secure network deployed during the Module B Networking Microhack.
 ## Diagram Inventory
 
 | File | Format | Challenge / Control | Description |
-|------|--------|--------------------|-|
+| --- | --- | --- | --- |
 | [hub-spoke-architecture.drawio](./hub-spoke-architecture.drawio) | draw.io XML | Ch 00–06 / **B.3.1 + B.3.2** | Full hub & spoke topology — hub VNet, spoke VNet, Firewall, Bastion, VPN GW, App Gateway, Front Door, Private Endpoints, Log Analytics |
 | [hub-spoke-architecture.svg](./hub-spoke-architecture.svg) | SVG | Ch 00–06 / **B.3.1 + B.3.2** | Exported SVG (open `.drawio` for editable version) |
 | [private-link-compute-detail.drawio](./private-link-compute-detail.drawio) | draw.io XML | Ch 04 / **B.3.2** | Private Endpoint + Private Compute detail — PE NICs, private DNS zones, public endpoint disabled, Managed Identity auth flow |
@@ -21,7 +21,7 @@ secure network deployed during the Module B Networking Microhack.
 ### Mermaid Sources (for embedding in docs)
 
 | File | Used In Docs |
-|------|-------------|
+| --- | --- |
 | [mermaid/hub-spoke-architecture.mmd](./mermaid/hub-spoke-architecture.mmd) | Overview, Solution Design |
 | [mermaid/private-link-compute-detail.mmd](./mermaid/private-link-compute-detail.mmd) | Challenge 04 |
 | [mermaid/global-delivery.mmd](./mermaid/global-delivery.mmd) | Challenge 03/04 |
@@ -32,7 +32,7 @@ secure network deployed during the Module B Networking Microhack.
 ## Diagram → Control Mapping
 
 | Diagram | Module B Controls | Auditor Checkpoint |
-|---------|------------------|--------------------|
+| --- | --- | --- |
 | `hub-spoke-architecture` | B.3.1, B.3.2 | Hub & Spoke topology; ≥5 native Azure networking services visible |
 | `private-link-compute-detail` | B.3.2 | Private Endpoints deployed; public endpoints disabled; no public IPs on compute |
 | `global-delivery` | B.3.2 | Azure Front Door + WAF + App Gateway end-to-end; WAF in Prevention mode |
@@ -118,7 +118,7 @@ Mermaid sources are in `mermaid/` subdirectory.
 ## Related Evidence Templates
 
 | Diagram | Referenced In |
-|---------|--------------|
+| --- | --- |
 | `hub-spoke-architecture` | `B2.1_SolutionDesign_CFS_v1.docx` (Section 3.1), `B3.x_AsBuilt_CFS_v1.docx` |
 | `private-link-compute-detail` | `B3.x_AsBuilt_CFS_v1.docx` (Section 3), `B4.1_ValidationTestPlan_CFS_v1.xlsx` (TC-005/TC-006) |
 | `global-delivery` | `B2.1_SolutionDesign_CFS_v1.docx` (Section 2.3), `B4.1_ValidationTestPlan_CFS_v1.xlsx` (TC-011/TC-012) |

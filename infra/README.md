@@ -222,7 +222,7 @@ linter; Checkov adds Terraform and supply-chain coverage.
   **RBAC** authorization on Key Vault with **purge protection ON** and **public access disabled**.
 - **No public IPs** on compute; **Private Endpoints + Private DNS** for all sample PaaS.
 - **WAF** on both Front Door and Application Gateway; **NSG flow logs** + **Network Watcher**
-  + **Log Analytics** for full network observability.
+  - **Log Analytics** for full network observability.
 
 ## Layout
 

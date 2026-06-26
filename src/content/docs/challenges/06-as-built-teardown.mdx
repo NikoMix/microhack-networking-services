@@ -12,7 +12,7 @@ import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/
   <Card title="Duration" icon="clock">60 minutes</Card>
   <Card title="Module B control" icon="approve-check">**B.4.2** Post-Deployment Documentation</Card>
   <Card title="Agent" icon="seti:github">`evidence-author` · `challenger`</Card>
-  <Card title="Evidence artifacts" icon="document">`B4.2_AsBuilt_CFS_v1.docx` · `B4.2_DecisionLog_CFS_v1.docx` · `B4.2_OperationsRunbook_CFS_v1.docx`</Card>
+  <Card title="Evidence artifacts" icon="document">`B3.x_AsBuilt_CFS_v1.docx` · `B4.2_DecisionLog_CFS_v1.xlsx` · `B4.2_SOPs_CFS_v1.docx`</Card>
 </CardGrid>
 
 ## Objectives
@@ -45,7 +45,8 @@ from the original HLD. The agent queries your Azure environment to generate this
 |---|---|---|
 | `evidence-author` | `.github/agents/evidence-author.agent.md` | Generates as-built content, decision log, and runbooks from deployment state |
 | `challenger` | `.github/agents/challenger.agent.md` | Verifies as-built reflects actual (not planned) state |
-| Skill: `b42-as-built.prompt.md` | `.github/prompts/b42-as-built.prompt.md` | As-built and runbook templates |
+| Skill: `evidence-generation.prompt.md` | `.github/prompts/evidence-generation.prompt.md` | As-built and runbook evidence |
+| Skill: `teardown-checklist.prompt.md` | `.github/prompts/teardown-checklist.prompt.md` | Clean teardown + cost-stop verification |
 
 ## MCP tools used
 
@@ -92,7 +93,7 @@ from the original HLD. The agent queries your Azure environment to generate this
    or the HLD design? Are any IP addresses clearly placeholder values?
    ```
 
-6. Populate `evidence-templates/B4.2_AsBuilt_CFS_v1.docx`.
+6. Populate `evidence-templates/B3.x_AsBuilt_CFS_v1.docx`.
 </Steps>
 
 ## Part B — Architecture decision log
@@ -116,7 +117,7 @@ from the original HLD. The agent queries your Azure environment to generate this
    | ADR-05 | Private DNS Zones in hub (not spoke) | Centralised DNS management, simplifies spoke onboarding |
    | ADR-06 | ExpressRoute design-only | Cost constraint; documented for production recommendation |
 
-3. Populate `evidence-templates/B4.2_DecisionLog_CFS_v1.docx`.
+3. Populate `evidence-templates/B4.2_DecisionLog_CFS_v1.xlsx`.
 </Steps>
 
 ## Part C — Operations runbooks (SOPs)
@@ -154,7 +155,7 @@ from the original HLD. The agent queries your Azure environment to generate this
    Approval: Network Lead + Security Officer.
    ```
 
-4. Populate `evidence-templates/B4.2_OperationsRunbook_CFS_v1.docx`.
+4. Populate `evidence-templates/B4.2_SOPs_CFS_v1.docx`.
 </Steps>
 
 ## Part D — Final evidence pack review
@@ -171,16 +172,12 @@ from the original HLD. The agent queries your Azure environment to generate this
 
    | Control | Artifact | Status |
    |---|---|---|
-   | B.1.1 | `B1.1_RequirementsAssessment_CFS_v1.docx` | ✅ Challenge 01 |
+   | B.1.1 | `B1.1_RequirementsAssessment_CFS_v1.xlsx` | ✅ Challenge 01 |
    | B.2.1 | `B2.1_SolutionDesign_CFS_v1.docx` | ✅ Challenge 02 |
-   | B.2.2 | `B2.2_WellArchitectedReview_CFS_v1.docx` | ✅ Challenge 02 |
-   | B.3.1 | `B3.1_ImplementationPlan_CFS_v1.docx` | ✅ Challenge 03 |
-   | B.3.2 | `B3.2_ServiceEvidence_CFS_v1.docx` | ✅ Challenges 03–04 |
-   | B.4.1 | `B4.1_TestPlan_CFS_v1.docx` | ✅ Challenge 05 |
-   | B.4.1 | `B4.1_SignOff_CFS_v1.docx` | ✅ Challenge 05 |
-   | B.4.2 | `B4.2_AsBuilt_CFS_v1.docx` | ✅ Challenge 06 |
-   | B.4.2 | `B4.2_DecisionLog_CFS_v1.docx` | ✅ Challenge 06 |
-   | B.4.2 | `B4.2_OperationsRunbook_CFS_v1.docx` | ✅ Challenge 06 |
+   | B.2.2 | `B2.2_WellArchitectedReview_CFS_v1.xlsx` | ✅ Challenge 02 |
+   | B.3.1 + B.3.2 | `B3.x_AsBuilt_CFS_v1.docx` | ✅ Challenges 03–04 |
+   | B.4.1 | `B4.1_ValidationTestPlan_CFS_v1.xlsx` (test cases + sign-off) | ✅ Challenge 05 |
+   | B.4.2 | `B3.x_AsBuilt_CFS_v1.docx` (as-built) · `B4.2_DecisionLog_CFS_v1.xlsx` · `B4.2_SOPs_CFS_v1.docx` | ✅ Challenge 06 |
 </Steps>
 
 ## Part E — Teardown (MANDATORY — do not skip)
@@ -194,12 +191,12 @@ is your backstop, but it does not automatically delete resources.
 <Steps>
 1. **Trigger the teardown workflow**:
    ```bash
-   gh workflow run teardown.yml -f confirm=true
+   gh workflow run teardown.yml -f confirm=DELETE
    gh run watch
    ```
 
 2. Alternatively, from the GitHub Actions UI:
-   **Actions → teardown.yml → Run workflow → confirm: true**
+   **Actions → teardown.yml → Run workflow → confirm: DELETE**
 
 3. The teardown workflow deletes all CFS resource groups:
    - `rg-cfs-hub-swc`
@@ -227,9 +224,9 @@ is your backstop, but it does not automatically delete resources.
 
 | Check | Evidence |
 |---|---|
-| As-built contains actual IP addresses (not 0.0.0.0 or placeholders) | `B4.2_AsBuilt_CFS_v1.docx` |
-| Decision log has ≥5 entries with rationale and alternatives | `B4.2_DecisionLog_CFS_v1.docx` |
-| Runbooks have rollback steps and approval requirements | `B4.2_OperationsRunbook_CFS_v1.docx` |
+| As-built contains actual IP addresses (not 0.0.0.0 or placeholders) | `B3.x_AsBuilt_CFS_v1.docx` |
+| Decision log has ≥5 entries with rationale and alternatives | `B4.2_DecisionLog_CFS_v1.xlsx` |
+| Runbooks have rollback steps and approval requirements | `B4.2_SOPs_CFS_v1.docx` |
 | All 10 evidence artifacts are present in `evidence-templates/` | Directory listing |
 | No CFS resource groups remain in the subscription | `az group list` |
 
@@ -237,9 +234,9 @@ is your backstop, but it does not automatically delete resources.
 
 | Control | Artifact | Template |
 |---|---|---|
-| B.4.2 | `B4.2_AsBuilt_CFS_v1.docx` | `evidence-templates/B4.2_AsBuilt_CFS_v1.docx` |
-| B.4.2 | `B4.2_DecisionLog_CFS_v1.docx` | `evidence-templates/B4.2_DecisionLog_CFS_v1.docx` |
-| B.4.2 | `B4.2_OperationsRunbook_CFS_v1.docx` | `evidence-templates/B4.2_OperationsRunbook_CFS_v1.docx` |
+| B.4.2 | `B3.x_AsBuilt_CFS_v1.docx` | `evidence-templates/B3.x_AsBuilt_CFS_v1.docx` |
+| B.4.2 | `B4.2_DecisionLog_CFS_v1.xlsx` | `evidence-templates/B4.2_DecisionLog_CFS_v1.xlsx` |
+| B.4.2 | `B4.2_SOPs_CFS_v1.docx` | `evidence-templates/B4.2_SOPs_CFS_v1.docx` |
 
 ## Cost estimate
 

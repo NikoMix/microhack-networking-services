@@ -23,13 +23,13 @@ B.2.1 and B.2.2.
 
 | Control | Name | Challenge | Evidence artifact | Auditor's top check |
 |---|---|---|---|---|
-| **B.1.1** | Requirements Assessment | [01 — Requirements Assessment](../challenges/01-requirements-assessment/) | `B1.1_RequirementsAssessment_CFS_v1.docx` | All 8 topic areas present; customer acknowledgement |
+| **B.1.1** | Requirements Assessment | [01 — Requirements Assessment](../challenges/01-requirements-assessment/) | `B1.1_RequirementsAssessment_CFS_v1.xlsx` | All 8 topic areas present; customer acknowledgement |
 | **B.2.1** | Solution Design | [02 — Solution Design + WAR](../challenges/02-solution-design/) | `B2.1_SolutionDesign_CFS_v1.docx` | Topology diagram; ALZ design areas; decision log |
-| **B.2.2** | Well-Architected Review | [02 — Solution Design + WAR](../challenges/02-solution-design/) | `B2.2_WellArchitectedReview_CFS_v1.docx` | ≥2 pillars (Security mandatory); maturity scores; recommendations |
-| **B.3.1** | Scenario Implementation | [03 — Deploy Hub & Spoke](../challenges/03-deploy-hub-spoke/) | `B3.1_ImplementationPlan_CFS_v1.docx` | Deployed resources; live environment; at least 1 scenario |
-| **B.3.2** | ≥5 Native Azure Networking Services | [03](../challenges/03-deploy-hub-spoke/) + [04](../challenges/04-private-networking-compute/) | `B3.2_ServiceEvidence_CFS_v1.docx` | Named resources; ≥5 distinct services; resource group and region |
-| **B.4.1** | Validation & Testing | [05 — Validation & Testing](../challenges/05-validation-testing/) | `B4.1_TestPlan_CFS_v1.docx` + `B4.1_SignOff_CFS_v1.docx` | Test plan with pass criteria; customer sign-off |
-| **B.4.2** | Post-Deployment Documentation | [06 — As-Built & Teardown](../challenges/06-as-built-teardown/) | `B4.2_AsBuilt_CFS_v1.docx` + `B4.2_DecisionLog_CFS_v1.docx` + `B4.2_OperationsRunbook_CFS_v1.docx` | As-built (actual values); decision log; runbooks with rollback |
+| **B.2.2** | Well-Architected Review | [02 — Solution Design + WAR](../challenges/02-solution-design/) | `B2.2_WellArchitectedReview_CFS_v1.xlsx` | ≥2 pillars (Security mandatory); maturity scores; recommendations |
+| **B.3.1** | Scenario Implementation | [03 — Deploy Hub & Spoke](../challenges/03-deploy-hub-spoke/) | `B3.x_AsBuilt_CFS_v1.docx` | Deployed resources; live environment; at least 1 scenario |
+| **B.3.2** | ≥5 Native Azure Networking Services | [03](../challenges/03-deploy-hub-spoke/) + [04](../challenges/04-private-networking-compute/) | `B3.x_AsBuilt_CFS_v1.docx` | Named resources; ≥5 distinct services; resource group and region |
+| **B.4.1** | Validation & Testing | [05 — Validation & Testing](../challenges/05-validation-testing/) | `B4.1_ValidationTestPlan_CFS_v1.xlsx` (test cases + Customer Sign-Off sheet) | Test plan with pass criteria; customer sign-off |
+| **B.4.2** | Post-Deployment Documentation | [06 — As-Built & Teardown](../challenges/06-as-built-teardown/) | `B3.x_AsBuilt_CFS_v1.docx` + `B4.2_DecisionLog_CFS_v1.xlsx` + `B4.2_SOPs_CFS_v1.docx` | As-built (actual values); decision log; runbooks with rollback |
 
 ## Azure services → controls matrix
 
@@ -69,7 +69,7 @@ wants to show coverage depth.
 
 ## Eight B.1.1 topic areas
 
-All eight must appear in `B1.1_RequirementsAssessment_CFS_v1.docx`:
+All eight must appear in `B1.1_RequirementsAssessment_CFS_v1.xlsx`:
 
 | # | Topic area | CFS section |
 |---|---|---|
@@ -88,13 +88,13 @@ All evidence files follow the pattern `B[x.y]_[DocType]_CFS_v1.[ext]`:
 
 | File | Control | Type |
 |---|---|---|
-| `B1.1_RequirementsAssessment_CFS_v1.docx` | B.1.1 | Requirements |
+| `B1.1_RequirementsAssessment_CFS_v1.xlsx` | B.1.1 | Requirements |
 | `B2.1_SolutionDesign_CFS_v1.docx` | B.2.1 | Design |
-| `B2.2_WellArchitectedReview_CFS_v1.docx` | B.2.2 | Review |
-| `B3.1_ImplementationPlan_CFS_v1.docx` | B.3.1 | Implementation |
-| `B3.2_ServiceEvidence_CFS_v1.docx` | B.3.2 | Service evidence |
-| `B4.1_TestPlan_CFS_v1.docx` | B.4.1 | Test plan |
-| `B4.1_SignOff_CFS_v1.docx` | B.4.1 | Customer sign-off |
-| `B4.2_AsBuilt_CFS_v1.docx` | B.4.2 | As-built |
-| `B4.2_DecisionLog_CFS_v1.docx` | B.4.2 | Decision log |
-| `B4.2_OperationsRunbook_CFS_v1.docx` | B.4.2 | Runbooks / SOPs |
+| `B2.2_WellArchitectedReview_CFS_v1.xlsx` | B.2.2 | Review |
+| `B3.x_AsBuilt_CFS_v1.docx` | B.3.1 | Implementation |
+| `B3.x_AsBuilt_CFS_v1.docx` | B.3.2 | Service evidence |
+| `B4.1_ValidationTestPlan_CFS_v1.xlsx` | B.4.1 | Test plan |
+| `B4.1_ValidationTestPlan_CFS_v1.xlsx` | B.4.1 | Customer sign-off |
+| `B3.x_AsBuilt_CFS_v1.docx` | B.4.2 | As-built |
+| `B4.2_DecisionLog_CFS_v1.xlsx` | B.4.2 | Decision log |
+| `B4.2_SOPs_CFS_v1.docx` | B.4.2 | Runbooks / SOPs |

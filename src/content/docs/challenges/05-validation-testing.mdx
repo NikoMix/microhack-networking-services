@@ -12,7 +12,7 @@ import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/
   <Card title="Duration" icon="clock">60 minutes</Card>
   <Card title="Module B control" icon="approve-check">**B.4.1** Validation & Testing (customer sign-off required)</Card>
   <Card title="Agent" icon="seti:github">`validation-engineer` · `challenger`</Card>
-  <Card title="Evidence artifacts" icon="document">`B4.1_TestPlan_CFS_v1.docx` · `B4.1_SignOff_CFS_v1.docx`</Card>
+  <Card title="Evidence artifacts" icon="document">`B4.1_ValidationTestPlan_CFS_v1.xlsx` (Test Cases + Customer Sign-Off sheets)</Card>
 </CardGrid>
 
 ## Objectives
@@ -45,7 +45,7 @@ a remediation log for any failures, and a customer-signed acceptance.
 |---|---|---|
 | `validation-engineer` | `.github/agents/validation-engineer.agent.md` | Generates the test plan, interprets Connection Monitor results, analyses NSG flow logs |
 | `challenger` | `.github/agents/challenger.agent.md` | Reviews test coverage — are all security controls tested? |
-| Skill: `b41-test-plan.prompt.md` | `.github/prompts/b41-test-plan.prompt.md` | Test case template and scoring |
+| Skill: `evidence-generation.prompt.md` | `.github/prompts/evidence-generation.prompt.md` | Test plan + results evidence generation |
 
 ## MCP tools used
 
@@ -88,7 +88,7 @@ The test plan covers all four security layers of the CFS deployment:
    Is the WAF in Prevention mode verified? Is private DNS resolution tested?
    ```
 
-4. Fill in `evidence-templates/B4.1_TestPlan_CFS_v1.docx` with the test cases before
+4. Fill in `evidence-templates/B4.1_ValidationTestPlan_CFS_v1.xlsx` with the test cases before
    execution.
 </Steps>
 
@@ -233,9 +233,9 @@ B.4.1. In the classroom, your **trainer** plays the CFS sponsor role.
 </Aside>
 
 <Steps>
-1. Prepare the sign-off document:
+1. Prepare the customer sign-off (the **Customer Sign-Off** sheet of the validation workbook):
    ```
-   @evidence-author Prepare B4.1_SignOff_CFS_v1.docx. Summarise the test results:
+   @evidence-author Complete the Customer Sign-Off sheet in B4.1_ValidationTestPlan_CFS_v1.xlsx. Summarise the test results:
    X tests passed, Y remediated, 0 outstanding failures. Include the test execution date,
    environment (swedencentral), and a signature block for the CFS sponsor.
    ```
@@ -245,7 +245,7 @@ B.4.1. In the classroom, your **trainer** plays the CFS sponsor role.
    - Signs (or prints name + date) in the signature block
    - Notes any conditional acceptances or follow-up items
 
-3. Scan or photograph the signed document and attach it to `B4.1_SignOff_CFS_v1.docx`.
+3. Scan or photograph the signature and record it in the **Customer Sign-Off** sheet of `B4.1_ValidationTestPlan_CFS_v1.xlsx`.
    In a digital-only workflow, a named acknowledgement in a Teams/email thread is acceptable
    — attach the thread screenshot.
 
@@ -260,19 +260,18 @@ B.4.1. In the classroom, your **trainer** plays the CFS sponsor role.
 
 | Check | Evidence |
 |---|---|
-| Test plan document has ≥6 test cases with pass criteria | `B4.1_TestPlan_CFS_v1.docx` |
+| Test plan document has ≥6 test cases with pass criteria | `B4.1_ValidationTestPlan_CFS_v1.xlsx` |
 | All test cases show actual results | Test plan, Actual Result column |
 | All tests are Pass or Remediated (0 open failures) | Test plan, Status column |
 | NSG flow logs are enabled on hub and spoke | `az network watcher flow-log list` |
 | Network Watcher is enabled in Sweden Central | `az network watcher list` |
-| Customer sign-off is present (name + date + acknowledgement) | `B4.1_SignOff_CFS_v1.docx` |
+| Customer sign-off is present (name + date + acknowledgement) | `B4.1_ValidationTestPlan_CFS_v1.xlsx` |
 
 ## Evidence artifacts
 
 | Control | Artifact | Template |
 |---|---|---|
-| B.4.1 | `B4.1_TestPlan_CFS_v1.docx` | `evidence-templates/B4.1_TestPlan_CFS_v1.docx` |
-| B.4.1 | `B4.1_SignOff_CFS_v1.docx` | `evidence-templates/B4.1_SignOff_CFS_v1.docx` |
+| B.4.1 | `B4.1_ValidationTestPlan_CFS_v1.xlsx` (Test Cases + Customer Sign-Off sheets) | `evidence-templates/B4.1_ValidationTestPlan_CFS_v1.xlsx` |
 
 ## Cost estimate
 

@@ -29,7 +29,6 @@ The table below shows the expected values for a standard lab deployment.
 | `cfs-afd-profile` | global | Premium | — | Anycast | Private Link origin |
 | `pe-kv-swc` | app | — | 10.1.3.4 | — | privatelink.vaultcore.azure.net |
 | `pe-st-swc` | app | — | 10.1.3.5 | — | privatelink.blob.core.windows.net |
-| `pe-sql-swc` | app | — | 10.1.3.6 | — | privatelink.database.windows.net |
 | `cfs-app-ilb-swc` | app | Standard | 10.1.4.100 | — | Internal only |
 
 ## Reference decision log (6 entries minimum)
@@ -120,13 +119,11 @@ Use these questions in the 15-minute retrospective:
 
 | Control | Artifact | Expected size |
 |---|---|---|
-| B.1.1 | `B1.1_RequirementsAssessment_CFS_v1.docx` | 3–5 pages |
+| B.1.1 | `B1.1_RequirementsAssessment_CFS_v1.xlsx` | 3–5 pages |
 | B.2.1 | `B2.1_SolutionDesign_CFS_v1.docx` | 6–10 pages with diagram |
-| B.2.2 | `B2.2_WellArchitectedReview_CFS_v1.docx` | 4–6 pages |
-| B.3.1 | `B3.1_ImplementationPlan_CFS_v1.docx` | 2–3 pages |
-| B.3.2 | `B3.2_ServiceEvidence_CFS_v1.docx` | 2–3 pages |
-| B.4.1 | `B4.1_TestPlan_CFS_v1.docx` | 3–4 pages |
-| B.4.1 | `B4.1_SignOff_CFS_v1.docx` | 1 page with signature |
-| B.4.2 | `B4.2_AsBuilt_CFS_v1.docx` | 4–6 pages with tables |
-| B.4.2 | `B4.2_DecisionLog_CFS_v1.docx` | 2–3 pages |
-| B.4.2 | `B4.2_OperationsRunbook_CFS_v1.docx` | 4–6 pages (multiple SOPs) |
+| B.2.2 | `B2.2_WellArchitectedReview_CFS_v1.xlsx` | 4–6 pages |
+| B.3.1 + B.3.2 | `B3.x_AsBuilt_CFS_v1.docx` | 4–6 pages |
+| B.4.1 | `B4.1_ValidationTestPlan_CFS_v1.xlsx` | test cases + signature sheets |
+| B.4.2 | `B3.x_AsBuilt_CFS_v1.docx` (as-built) | 4–6 pages with tables |
+| B.4.2 | `B4.2_DecisionLog_CFS_v1.xlsx` | 2–3 pages |
+| B.4.2 | `B4.2_SOPs_CFS_v1.docx` | 4–6 pages (multiple SOPs) |

@@ -13,7 +13,7 @@ _Networking Services in Microsoft Azure Advanced Specialization_ audit.
 ## Template Inventory
 
 | File | Control(s) Satisfied | Format | Purpose | Key Sections |
-|------|---------------------|--------|---------|--------------|
+| --- | --- | --- | --- | --- |
 | [B1.1_RequirementsAssessment_CFS_v1.xlsx](./B1.1_RequirementsAssessment_CFS_v1.xlsx) | **B.1.1** | Excel | Requirements register | Functional reqs, NFRs, Constraints, Compliance mapping |
 | [B2.1_SolutionDesign_CFS_v1.docx](./B2.1_SolutionDesign_CFS_v1.docx) | **B.2.1** | Word | Solution design document | Architecture, service selection, IP plan, security, compliance |
 | [B2.2_WellArchitectedReview_CFS_v1.xlsx](./B2.2_WellArchitectedReview_CFS_v1.xlsx) | **B.2.2** | Excel | WAF review workbook | Security + Reliability (required); OE + Perf + Cost (optional) |
@@ -27,7 +27,7 @@ _Networking Services in Microsoft Azure Advanced Specialization_ audit.
 ## Control → Template Mapping
 
 | Module B Control | Control Name | Evidence Template(s) |
-|-----------------|--------------|----------------------|
+| --- | --- | --- |
 | B.1.1 | Requirements Assessment | `B1.1_RequirementsAssessment_CFS_v1.xlsx` |
 | B.2.1 | Solution Design | `B2.1_SolutionDesign_CFS_v1.docx` |
 | B.2.2 | Well-Architected Review | `B2.2_WellArchitectedReview_CFS_v1.xlsx` |
