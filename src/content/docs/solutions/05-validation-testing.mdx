@@ -1,0 +1,108 @@
+---
+title: "Solution 05 — Validation & Testing"
+description: Trainer solution key for Challenge 05. Includes expected test results for all test cases, NSG flow log interpretation, sign-off guidance, and grading hints for B.4.1.
+sidebar:
+  order: 6
+  label: "Sol 05 · Validation & Testing"
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="Trainer-only">
+This page contains expected test results and sign-off guidance. Do not share until pupils
+have completed their test execution and are ready for the sign-off step.
+</Aside>
+
+## Expected test results
+
+| Test ID | Description | Expected result | Common failure cause |
+|---|---|---|---|
+| TC-01 | Hub to spoke routing via Firewall | Ping succeeds; Firewall logs show `Action: Allow` | UDR not applied to spoke subnet |
+| TC-02 | Inter-spoke isolation | Direct spoke-to-spoke traffic blocked; must route via hub Firewall | Spoke peering allows direct traffic (check `allowForwardedTraffic`) |
+| TC-03 | Private DNS resolution | `nslookup` returns `10.1.3.x`; not a public IP | DNS zone VNet link missing |
+| TC-04 | No public access to Key Vault | HTTP 403 from outside VNet | Public network access still enabled on KV |
+| TC-05 | Bastion is only admin path | Direct SSH/RDP from internet times out | VM has no public IP — expected timeout is a pass |
+| TC-06 | WAF blocks XSS payload | HTTP 403 from Front Door WAF | WAF in Detection mode (not Prevention) |
+
+## NSG flow log interpretation guide
+
+When reviewing Traffic Analytics, trainers should guide pupils to look for:
+
+**Expected allowed flows (green):**
+- Hub Firewall → spoke compute (TCP 80/443)
+- Spoke compute → hub Firewall (TCP 443, DNS 53)
+- Bastion → spoke compute (TCP 3389/22)
+- VPN gateway → spoke (branch traffic, if VPN connection exists)
+
+**Expected denied flows (red — these are correct):**
+- Internet → spoke compute (public IP not present; NSG `DenyAllInbound`)
+- Spoke → spoke direct (no direct peering; hub Firewall enforces)
+- Any IP → Key Vault public endpoint from outside VNet
+
+**Red flags (unexpected flows that indicate misconfiguration):**
+- Any spoke compute → internet direct (should go via Firewall)
+- Any Key Vault traffic on public IP (should be private only)
+- SSH/RDP from internet source IPs to any compute
+
+## Sample Connection Monitor output
+
+A passing Connection Monitor result for the hub-to-spoke test group:
+
+```json
+{
+  "testGroups": [{
+    "name": "hub-to-spoke",
+    "sources": [{ "resourceId": "/subscriptions/.../cfs-hub-vm-swc" }],
+    "destinations": [{ "address": "10.1.4.4" }],
+    "testConfigurations": [{
+      "protocol": "Tcp",
+      "successThresholdChecksFailedPercent": 0,
+      "successThresholdRoundTripTimeMs": 150
+    }],
+    "status": "running",
+    "testResults": [{ "roundTripTimeMs": 4, "checksFailedPercent": 0 }]
+  }]
+}
+```
+
+## Sign-off guidance (trainer acting as CFS sponsor)
+
+When a pupil presents the `B4.1_SignOff_CFS_v1.docx` for sign-off:
+
+1. **Verify the test plan is complete**: All test cases have actual results; no blanks.
+2. **Verify 0 open failures**: Any failed tests must show a `Remediated` status with a
+   description of the fix applied.
+3. **Verify test execution date**: Should be today's date (not the design date).
+4. **Add your name + date + role** in the signature block:
+   ```
+   Reviewed and approved by: [Trainer Name], CFS Network Engagement Manager
+   Date: [today's date]
+   Acceptance: All 6 test cases pass or are remediated. No outstanding network issues.
+   ```
+5. If a test case could not be executed (e.g., gateway not provisioned), document it as
+   `Deferred` with a target date — do not leave it blank.
+
+## Common pitfalls
+
+| Pitfall | Impact |
+|---|---|
+| Sign-off document has generic "Customer Name" in signature block | Fail — must have a real name and date |
+| All test results are copy-pasted from the test plan (no actual execution evidence) | Partial — screenshots or CLI output should accompany results |
+| TC-06 (WAF) passes but WAF is in Detection mode | Incorrect — WAF in Detection logs but does not block; force block by switching to Prevention |
+| NSG flow logs not enabled before tests | No flow data to review; deploy flow logs and wait 5 min |
+| Remediation log is empty but test cases show Remediated status | Partial — must document what was fixed |
+
+## Grading hints for B.4.1
+
+- **Excellent**: All test cases executed with CLI output/screenshots, NSG flow log analysis
+  included, remediation log for any failures, customer sign-off with name and date.
+- **Pass**: ≥5 test cases with results, NSG flow logs enabled, sign-off present (even if brief).
+- **Fail**: Missing customer sign-off, or fewer than 4 test cases executed, or test results
+  clearly not executed (identical to pre-filled expected values).
+
+## Auditor's top B.4.1 checks
+
+1. Is there a **test plan with pass criteria** — not just a list of what was done?
+2. Are test results **distinct from expected results** (shows actual execution)?
+3. Is there a **remediation log** for any failures (even if all passed)?
+4. Does the sign-off have **customer name, date, and an explicit acceptance statement**?

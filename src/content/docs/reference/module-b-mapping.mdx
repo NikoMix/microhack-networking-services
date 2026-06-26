@@ -1,0 +1,100 @@
+---
+title: Module B Control Mapping
+description: Cross-reference matrix mapping every Module B control of the Networking Services in Microsoft Azure Advanced Specialization to the challenge that satisfies it, the evidence artifact produced, and the Azure services that demonstrate it.
+sidebar:
+  order: 1
+  label: Module B mapping
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+This page maps every **Module B** control of the *Networking Services in Microsoft Azure
+Advanced Specialization* to the microhack challenge that satisfies it, the evidence
+artifact produced, the Azure services involved, and the auditor's key checks.
+
+<Aside type="tip" title="One engagement, multiple controls">
+The CFS engagement deliberately spans multiple controls — exactly as the audit guidance
+permits. A single hub & spoke deployment simultaneously satisfies B.3.1 (scenario
+implementation) and B.3.2 (≥5 native services). The design artifacts satisfy both
+B.2.1 and B.2.2.
+</Aside>
+
+## Control → challenge → evidence matrix
+
+| Control | Name | Challenge | Evidence artifact | Auditor's top check |
+|---|---|---|---|---|
+| **B.1.1** | Requirements Assessment | [01 — Requirements Assessment](../challenges/01-requirements-assessment/) | `B1.1_RequirementsAssessment_CFS_v1.docx` | All 8 topic areas present; customer acknowledgement |
+| **B.2.1** | Solution Design | [02 — Solution Design + WAR](../challenges/02-solution-design/) | `B2.1_SolutionDesign_CFS_v1.docx` | Topology diagram; ALZ design areas; decision log |
+| **B.2.2** | Well-Architected Review | [02 — Solution Design + WAR](../challenges/02-solution-design/) | `B2.2_WellArchitectedReview_CFS_v1.docx` | ≥2 pillars (Security mandatory); maturity scores; recommendations |
+| **B.3.1** | Scenario Implementation | [03 — Deploy Hub & Spoke](../challenges/03-deploy-hub-spoke/) | `B3.1_ImplementationPlan_CFS_v1.docx` | Deployed resources; live environment; at least 1 scenario |
+| **B.3.2** | ≥5 Native Azure Networking Services | [03](../challenges/03-deploy-hub-spoke/) + [04](../challenges/04-private-networking-compute/) | `B3.2_ServiceEvidence_CFS_v1.docx` | Named resources; ≥5 distinct services; resource group and region |
+| **B.4.1** | Validation & Testing | [05 — Validation & Testing](../challenges/05-validation-testing/) | `B4.1_TestPlan_CFS_v1.docx` + `B4.1_SignOff_CFS_v1.docx` | Test plan with pass criteria; customer sign-off |
+| **B.4.2** | Post-Deployment Documentation | [06 — As-Built & Teardown](../challenges/06-as-built-teardown/) | `B4.2_AsBuilt_CFS_v1.docx` + `B4.2_DecisionLog_CFS_v1.docx` + `B4.2_OperationsRunbook_CFS_v1.docx` | As-built (actual values); decision log; runbooks with rollback |
+
+## Azure services → controls matrix
+
+The table below shows which controls each Azure networking service contributes to:
+
+| Azure service | B.3.1 | B.3.2 | B.4.1 (tested) | Notes |
+|---|---|---|---|---|
+| Virtual Network + VNet Peering | ✅ | ✅ Service 1 | ✅ | Core connectivity fabric |
+| Azure Firewall Premium | ✅ | ✅ Service 2 | ✅ | Central egress; IDPS for PSD2 |
+| Azure Bastion Standard | ✅ | ✅ Service 3 | ✅ | Private admin; no public IPs on compute |
+| VPN Gateway | ✅ | ✅ Service 4 | — | Hybrid connectivity (branches) |
+| Azure Virtual WAN | ✅ (alt) | ✅ (alt) | — | Alternative to VPN Gateway |
+| Private Link / Private Endpoints | ✅ | ✅ Service 5 | ✅ | Zero public PaaS exposure |
+| Azure Load Balancer (Internal) | ✅ | ✅ Service 6 | — | Internal load distribution |
+| Application Gateway + WAF v2 | ✅ | ✅ Service 7 | ✅ | App-layer protection at spoke |
+| Azure Front Door Premium + WAF | ✅ | ✅ Service 8 | ✅ | Secure global delivery |
+| ExpressRoute | — | Design-only | — | Documented in B.2.1 HLD + ADR-06 |
+| Azure DNS (Private Zones) | ✅ (supporting) | — | ✅ | DNS resolution for private endpoints |
+
+## Module B scenario coverage
+
+The audit recognises five scenarios. CFS covers three:
+
+| Scenario | Covered | Challenges | Evidence |
+|---|---|---|---|
+| 1 — Secure network infrastructure | ✅ | 03, 04 | B3.1 + B3.2 |
+| 2 — On-prem and branch connectivity | ✅ | 03 | B3.1 (VPN Gateway) |
+| 3 — Remote work at scale | ❌ | Not in scope | — |
+| 4 — Secure global app delivery | ✅ | 04 | B3.2 (Front Door + App Gateway) |
+| 5 — 5G and edge computing | ❌ | Not in scope | — |
+
+<Aside type="note" title="Minimum scenario requirement">
+Module B requires at least **one** of the five scenarios to be implemented. CFS covers
+three, which demonstrates broader capability and is typical of a partner engagement that
+wants to show coverage depth.
+</Aside>
+
+## Eight B.1.1 topic areas
+
+All eight must appear in `B1.1_RequirementsAssessment_CFS_v1.docx`:
+
+| # | Topic area | CFS section |
+|---|---|---|
+| 1 | Business requirements | PSD2/GDPR, SLAs, budget |
+| 2 | Current state | On-prem topology, MPLS branches, ageing firewalls |
+| 3 | Target architecture | Hub & spoke, ALZ, Sweden Central |
+| 4 | Networking services | Azure Firewall, Bastion, Private Link, App Gateway, Front Door |
+| 5 | Security and compliance | PSD2 isolation, GDPR data residency, zero public PaaS |
+| 6 | Hybrid connectivity | 3 branches (VPN), 1 DC (ExpressRoute design-only) |
+| 7 | Identity and access | Entra ID P2, PIM, Bastion admin model |
+| 8 | Operational requirements | Network Watcher, NSG flow logs, 4h RTO / 15m RPO |
+
+## Evidence file naming convention
+
+All evidence files follow the pattern `B[x.y]_[DocType]_CFS_v1.[ext]`:
+
+| File | Control | Type |
+|---|---|---|
+| `B1.1_RequirementsAssessment_CFS_v1.docx` | B.1.1 | Requirements |
+| `B2.1_SolutionDesign_CFS_v1.docx` | B.2.1 | Design |
+| `B2.2_WellArchitectedReview_CFS_v1.docx` | B.2.2 | Review |
+| `B3.1_ImplementationPlan_CFS_v1.docx` | B.3.1 | Implementation |
+| `B3.2_ServiceEvidence_CFS_v1.docx` | B.3.2 | Service evidence |
+| `B4.1_TestPlan_CFS_v1.docx` | B.4.1 | Test plan |
+| `B4.1_SignOff_CFS_v1.docx` | B.4.1 | Customer sign-off |
+| `B4.2_AsBuilt_CFS_v1.docx` | B.4.2 | As-built |
+| `B4.2_DecisionLog_CFS_v1.docx` | B.4.2 | Decision log |
+| `B4.2_OperationsRunbook_CFS_v1.docx` | B.4.2 | Runbooks / SOPs |

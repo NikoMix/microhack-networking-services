@@ -1,0 +1,257 @@
+---
+title: "Challenge 06 — As-Built Documentation, Operations & Teardown"
+description: Use the evidence-author agent to produce the as-built document, architecture decision log, and operations runbooks for the CFS deployment, then run the teardown workflow to delete all Azure resources.
+sidebar:
+  order: 7
+  label: "06 · As-Built & Teardown"
+---
+
+import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Duration" icon="clock">60 minutes</Card>
+  <Card title="Module B control" icon="approve-check">**B.4.2** Post-Deployment Documentation</Card>
+  <Card title="Agent" icon="seti:github">`evidence-author` · `challenger`</Card>
+  <Card title="Evidence artifacts" icon="document">`B4.2_AsBuilt_CFS_v1.docx` · `B4.2_DecisionLog_CFS_v1.docx` · `B4.2_OperationsRunbook_CFS_v1.docx`</Card>
+</CardGrid>
+
+## Objectives
+
+1. Produce an **as-built document** that reflects the deployed CFS environment (not the design)
+2. Produce an **architecture decision log** capturing key decisions made during implementation
+3. Produce **operations runbooks** (SOPs) for day-2 operations: firewall policy changes,
+   certificate renewal, gateway failover, incident response
+4. **Tear down all Azure resources** via the GitHub Actions teardown workflow
+
+## Module B control — B.4.2
+
+> **B.4.2 — Post-Deployment Documentation**
+> The partner has produced post-deployment documentation for the customer engagement
+> including an as-built architecture document, a record of key design decisions, and
+> standard operating procedures / runbooks for ongoing operations.
+
+The auditor checks for: an as-built diagram, resource inventory with actual configuration
+values, a decision log with rationale, and at least one SOP/runbook.
+
+<Aside type="tip" title="As-built ≠ HLD">
+The B.4.2 as-built must reflect the **actual deployed state**, not the design intent.
+Include the actual IP addresses, gateway public IPs, SKUs provisioned, and any deviations
+from the original HLD. The agent queries your Azure environment to generate this.
+</Aside>
+
+## Agents and skills used
+
+| Agent / Skill | File | Role |
+|---|---|---|
+| `evidence-author` | `.github/agents/evidence-author.agent.md` | Generates as-built content, decision log, and runbooks from deployment state |
+| `challenger` | `.github/agents/challenger.agent.md` | Verifies as-built reflects actual (not planned) state |
+| Skill: `b42-as-built.prompt.md` | `.github/prompts/b42-as-built.prompt.md` | As-built and runbook templates |
+
+## MCP tools used
+
+- **Azure MCP** — queries actual resource configurations to generate the as-built document
+  (resource IDs, IP addresses, SKUs, tags)
+
+## Part A — Generate the as-built document (B.4.2)
+
+<Steps>
+1. Ask the agent to query Azure for the actual deployment state:
+   ```
+   @evidence-author Query Azure via MCP for the actual CFS deployed resources.
+   Generate the B4.2 as-built document covering: resource names, resource groups,
+   regions, SKUs, IP address assignments, VNet peering state, and route table entries.
+   ```
+
+2. The agent will produce a structured as-built covering:
+
+   | Section | Content |
+   |---|---|
+   | Hub VNet | Name, address space, subnets with actual CIDRs |
+   | Spoke VNet | Name, address space, subnets with actual CIDRs |
+   | VNet Peering | Peering names, state, allow-gateway-transit settings |
+   | Azure Firewall | Name, SKU, private IP, policy name, IDPS mode |
+   | Azure Bastion | Name, SKU, public IP address |
+   | VPN Gateway | Name, SKU, public IP, BGP ASN (if configured) |
+   | Private Endpoints | Name, target resource, private IP, DNS zone |
+   | Load Balancer | Name, SKU, frontend IP, backend pool count |
+   | App Gateway | Name, SKU, WAF mode, public/private IP, SSL policy |
+   | Front Door | Profile name, SKU, endpoint hostname, WAF policy |
+
+3. Cross-check the as-built against the actual Azure resources:
+   ```bash
+   az resource list -g rg-cfs-hub-swc -o table
+   az resource list -g rg-cfs-app-swc -o table
+   ```
+
+4. Identify and document any **deviations** from the Challenge 02 HLD (e.g., if you used
+   VPN Gateway instead of VWAN, or if an SKU was downgraded due to quota).
+
+5. Invoke the challenger:
+   ```
+   @challenger Review this as-built document. Does it reflect actual deployed state
+   or the HLD design? Are any IP addresses clearly placeholder values?
+   ```
+
+6. Populate `evidence-templates/B4.2_AsBuilt_CFS_v1.docx`.
+</Steps>
+
+## Part B — Architecture decision log
+
+<Steps>
+1. Ask the agent to compile the decision log:
+   ```
+   @evidence-author Compile the architecture decision log for the CFS engagement.
+   Include all key decisions made across Challenges 02–04 with decision, rationale,
+   alternatives considered, and trade-offs accepted.
+   ```
+
+2. The decision log must include at minimum:
+
+   | Decision ID | Decision | Rationale |
+   |---|---|---|
+   | ADR-01 | Azure Firewall Premium (not Standard) | IDPS required for PSD2 compliance |
+   | ADR-02 | VPN Gateway in lab (VWAN in production) | Cost guardrail for lab; VWAN documented as production recommendation |
+   | ADR-03 | Azure Bastion Standard (not Developer) | IP-based connection required for private-IP targets |
+   | ADR-04 | Front Door Premium + Private Link origin | Prevents Front Door from bypassing App Gateway WAF |
+   | ADR-05 | Private DNS Zones in hub (not spoke) | Centralised DNS management, simplifies spoke onboarding |
+   | ADR-06 | ExpressRoute design-only | Cost constraint; documented for production recommendation |
+
+3. Populate `evidence-templates/B4.2_DecisionLog_CFS_v1.docx`.
+</Steps>
+
+## Part C — Operations runbooks (SOPs)
+
+<Steps>
+1. Ask the agent to generate the runbooks:
+   ```
+   @evidence-author Generate operations runbooks for the CFS network. Cover:
+   1. Azure Firewall policy change procedure
+   2. Certificate renewal for App Gateway and Front Door
+   3. VPN gateway failover procedure
+   4. NSG flow log review procedure
+   5. Break-glass admin access procedure (Bastion)
+   ```
+
+2. Each runbook must include:
+   - **Purpose** — what operation this covers
+   - **Pre-conditions** — required permissions and state
+   - **Procedure steps** — numbered, with CLI commands or portal navigation
+   - **Rollback** — how to revert if something goes wrong
+   - **Approval required** — yes/no, and who
+
+3. Example runbook structure (Firewall policy change):
+   ```
+   SOP-NET-01: Azure Firewall Policy Change
+   Purpose: Add or modify a network/application rule in the CFS hub Firewall policy.
+   Pre-conditions: Network Contributor on rg-cfs-hub-swc, change request approved.
+   Procedure:
+     1. Export current policy: az network firewall policy export ...
+     2. Make changes in a dev/test environment first
+     3. Run what-if against production policy
+     4. Apply change during maintenance window (19:00–21:00 CET)
+     5. Monitor Firewall logs for 30 minutes post-change
+   Rollback: Re-import previous policy export.
+   Approval: Network Lead + Security Officer.
+   ```
+
+4. Populate `evidence-templates/B4.2_OperationsRunbook_CFS_v1.docx`.
+</Steps>
+
+## Part D — Final evidence pack review
+
+<Steps>
+1. Verify all B.4.2 artifacts are complete:
+   ```
+   @challenger Review all three B4.2 artifacts. Does the as-built reflect actual deployed
+   state? Does the decision log cover all major architectural decisions? Do the runbooks
+   have rollback steps and approval requirements?
+   ```
+
+2. Assemble the full evidence pack. At the end of this microhack you should have:
+
+   | Control | Artifact | Status |
+   |---|---|---|
+   | B.1.1 | `B1.1_RequirementsAssessment_CFS_v1.docx` | ✅ Challenge 01 |
+   | B.2.1 | `B2.1_SolutionDesign_CFS_v1.docx` | ✅ Challenge 02 |
+   | B.2.2 | `B2.2_WellArchitectedReview_CFS_v1.docx` | ✅ Challenge 02 |
+   | B.3.1 | `B3.1_ImplementationPlan_CFS_v1.docx` | ✅ Challenge 03 |
+   | B.3.2 | `B3.2_ServiceEvidence_CFS_v1.docx` | ✅ Challenges 03–04 |
+   | B.4.1 | `B4.1_TestPlan_CFS_v1.docx` | ✅ Challenge 05 |
+   | B.4.1 | `B4.1_SignOff_CFS_v1.docx` | ✅ Challenge 05 |
+   | B.4.2 | `B4.2_AsBuilt_CFS_v1.docx` | ✅ Challenge 06 |
+   | B.4.2 | `B4.2_DecisionLog_CFS_v1.docx` | ✅ Challenge 06 |
+   | B.4.2 | `B4.2_OperationsRunbook_CFS_v1.docx` | ✅ Challenge 06 |
+</Steps>
+
+## Part E — Teardown (MANDATORY — do not skip)
+
+<Aside type="caution" title="Tear down all resources before leaving">
+Azure Firewall, App Gateway, and VPN Gateways continue to bill even when idle.
+Run the teardown workflow at the end of the day. The budget alert set in Challenge 00
+is your backstop, but it does not automatically delete resources.
+</Aside>
+
+<Steps>
+1. **Trigger the teardown workflow**:
+   ```bash
+   gh workflow run teardown.yml -f confirm=true
+   gh run watch
+   ```
+
+2. Alternatively, from the GitHub Actions UI:
+   **Actions → teardown.yml → Run workflow → confirm: true**
+
+3. The teardown workflow deletes all CFS resource groups:
+   - `rg-cfs-hub-swc`
+   - `rg-cfs-app-swc`
+   - `rg-cfs-global-swc` (Front Door profile)
+   - Any budget/alert definitions
+
+4. **Verify all resources are deleted**:
+   ```bash
+   az group list --query "[?contains(name, 'cfs')]" -o table
+   # Expected: empty (no cfs resource groups remaining)
+   ```
+
+5. **Note any lingering resource locks** — if a resource group has a delete lock,
+   remove it first:
+   ```bash
+   az lock list -g rg-cfs-hub-swc -o table
+   # Remove if present: az lock delete --name <lock-name> -g rg-cfs-hub-swc
+   ```
+
+6. Confirm the budget alert is removed or will naturally expire next month.
+</Steps>
+
+## Validation checklist
+
+| Check | Evidence |
+|---|---|
+| As-built contains actual IP addresses (not 0.0.0.0 or placeholders) | `B4.2_AsBuilt_CFS_v1.docx` |
+| Decision log has ≥5 entries with rationale and alternatives | `B4.2_DecisionLog_CFS_v1.docx` |
+| Runbooks have rollback steps and approval requirements | `B4.2_OperationsRunbook_CFS_v1.docx` |
+| All 10 evidence artifacts are present in `evidence-templates/` | Directory listing |
+| No CFS resource groups remain in the subscription | `az group list` |
+
+## Evidence artifacts
+
+| Control | Artifact | Template |
+|---|---|---|
+| B.4.2 | `B4.2_AsBuilt_CFS_v1.docx` | `evidence-templates/B4.2_AsBuilt_CFS_v1.docx` |
+| B.4.2 | `B4.2_DecisionLog_CFS_v1.docx` | `evidence-templates/B4.2_DecisionLog_CFS_v1.docx` |
+| B.4.2 | `B4.2_OperationsRunbook_CFS_v1.docx` | `evidence-templates/B4.2_OperationsRunbook_CFS_v1.docx` |
+
+## Cost estimate
+
+After teardown: **€0/day ongoing**. If teardown is forgotten, Firewall alone bills ~€25/day.
+
+<Aside type="tip" title="Trainer tip — retrospective talking points">
+After teardown, run the 15-minute retrospective with these prompts:
+1. Which agent output was most useful? Which needed the most human editing?
+2. Which evidence artifact would an auditor most likely push back on — and why?
+3. How would you adapt this delivery for a customer with a real ExpressRoute or VWAN?
+4. What Copilot agent prompt would you rewrite based on today's experience?
+
+See [Solution 06](../../solutions/06-as-built-teardown/) for trainer talking points and
+grading notes for each artifact.
+</Aside>

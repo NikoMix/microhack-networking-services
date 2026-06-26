@@ -1,0 +1,110 @@
+---
+title: "Solution 03 — Deploy the Secure Hub & Spoke"
+description: Trainer solution key for Challenge 03. Includes expected resource state, what-if output interpretation, quota bypass options, gateway timing guidance, and grading hints for B.3.1 and B.3.2 partial evidence.
+sidebar:
+  order: 4
+  label: "Sol 03 · Deploy Hub & Spoke"
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="Trainer-only">
+This page contains expected deployment outputs and troubleshooting guidance. Do not share
+with pupils until after Challenge 03 is complete.
+</Aside>
+
+## Expected resource state after Challenge 03
+
+```bash
+# Resource groups
+rg-cfs-hub-swc    (Sweden Central)
+rg-cfs-app-swc    (Sweden Central)
+
+# Hub resources
+cfs-hub-vnet-swc       VirtualNetwork  10.0.0.0/16
+cfs-hub-afw-swc        AzureFirewall   Premium SKU, IDPS Alert+Deny
+cfs-hub-bas-swc        BastionHost     Standard SKU
+cfs-hub-gw-swc         VirtualNetworkGateway  VpnGw1 or VpnGw2
+
+# Spoke resources
+cfs-app-vnet-swc       VirtualNetwork  10.1.0.0/16
+
+# Peering (both directions Connected)
+cfs-hub-vnet-swc/cfs-hub-to-app    Connected
+cfs-app-vnet-swc/cfs-app-to-hub    Connected
+
+# Route tables
+cfs-hub-rt-swc   applied to GatewaySubnet  (no default route override)
+cfs-app-rt-swc   applied to snet-app, snet-compute  0.0.0.0/0 → 10.0.1.4 (Firewall)
+```
+
+## What-if output — expected changes
+
+A correct `what-if` output should show:
+- `+` Create: VNet, subnets, Firewall, Bastion, Gateway, Public IPs, Route Tables, NSGs
+- `~` Modify: none (first deployment)
+- `-` Delete: none
+
+**Red flags in what-if output** (challenger should catch these):
+- Any resource in a subnet other than AzureFirewallSubnet, AzureBastionSubnet, GatewaySubnet
+  having a public IP → investigate
+- Route `0.0.0.0/0` on GatewaySubnet → must NOT override (this breaks BGP routing)
+- Missing UDR on spoke subnets → egress bypass risk
+
+## Gateway timing — class management
+
+| Phase | Action | Duration |
+|---|---|---|
+| T+0 | `gh workflow run deploy.yml -f component=gateway` | 0 min (trigger only) |
+| T+0 → T+40 | Continue challenges (what-if, hub deploy, spoke deploy, evidence) | 40 min |
+| T+40 | Gateway provisioning completes | validate |
+| T+45 | Validate gateway in Part D of challenge | 5 min |
+
+**If gateway is still provisioning at validation time**: Continue to evidence generation (Part E)
+and come back to gateway validation. Do not block the class.
+
+## Quota bypass options
+
+If Azure Firewall or VPN Gateway quota is unavailable:
+
+| Resource | Quota issue | Fallback |
+|---|---|---|
+| Azure Firewall | `QuotaExceeded` in region | Deploy Basic SKU for lab (note Premium is production recommendation); or use NSGs + Azure Firewall Basic |
+| VPN Gateway | No capacity | Reduce to Basic SKU (`az network vnet-gateway create --sku Basic`); show VWAN as a portal demo |
+| Public IPs | Limit reached | Request quota increase, or share IPs between pupils |
+
+## Expected Firewall policy state
+
+```bash
+az network firewall policy show -n cfs-hub-afwp-swc -g rg-cfs-hub-swc \
+  --query '{sku:sku.tier, idpsMode:intrusionDetection.mode, threatIntel:threatIntelMode}' -o json
+# Expected:
+# { "sku": "Premium", "idpsMode": "Deny", "threatIntel": "Alert" }
+```
+
+## Common pitfalls
+
+| Pitfall | Root cause | Fix |
+|---|---|---|
+| `deploy.yml` fails at OIDC login step | Secrets not set or wrong subscription | Recheck `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` in repo secrets |
+| Peering shows Disconnected | One side created before the other | Delete both peerings and recreate in the same Bicep deployment |
+| Firewall created as Standard instead of Premium | Wrong SKU in parameters | Update `firewallSku` parameter to `Premium`; redeploy |
+| Route on GatewaySubnet pointing to Firewall | Misconfigured UDR | Remove the UDR from GatewaySubnet — this breaks BGP; spoke UDRs only |
+| Gateway takes >60 min | Rare Azure provisioning delay | Wait; do not cancel; retrigger only if run shows failed |
+
+## Grading hints for B.3.1
+
+- **Pass**: Hub VNet, Firewall, Bastion, and Gateway all `Succeeded`; peering is `Connected` both ways.
+- **Partial**: Gateway still provisioning at end of challenge — acceptable if it succeeds before Challenge 05.
+- **Fail**: Firewall or peering missing; route table not applied to spoke subnets.
+
+## Grading hints for B.3.2 (partial — 4 of 8 services)
+
+At end of Challenge 03, B.3.2 evidence should list:
+1. Virtual Network + VNet Peering (2 VNets, 2 peerings)
+2. Azure Firewall Premium
+3. Azure Bastion Standard
+4. VPN Gateway (or Azure Virtual WAN)
+
+The service evidence document should explicitly name each resource (not just the service type).
+Challenge 04 adds the remaining 4 services to reach ≥8 total.

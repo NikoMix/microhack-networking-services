@@ -1,0 +1,292 @@
+---
+title: "Challenge 05 — Validation & Testing"
+description: Execute the CFS test plan using the validation-engineer agent, run Connection Monitor tests and NSG flow log analysis, remediate findings, and obtain customer sign-off to satisfy the B.4.1 audit control.
+sidebar:
+  order: 6
+  label: "05 · Validation & Testing"
+---
+
+import { Aside, Steps, Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Duration" icon="clock">60 minutes</Card>
+  <Card title="Module B control" icon="approve-check">**B.4.1** Validation & Testing (customer sign-off required)</Card>
+  <Card title="Agent" icon="seti:github">`validation-engineer` · `challenger`</Card>
+  <Card title="Evidence artifacts" icon="document">`B4.1_TestPlan_CFS_v1.docx` · `B4.1_SignOff_CFS_v1.docx`</Card>
+</CardGrid>
+
+## Objectives
+
+1. Execute a structured **test plan** against the deployed CFS hub & spoke environment
+2. Use **Azure Network Watcher Connection Monitor** to validate end-to-end path reachability
+3. Enable and review **NSG flow logs** to confirm traffic is flowing as expected
+4. **Remediate** any failed tests and document the remediation log
+5. Obtain **customer sign-off** (trainer acting as CFS sponsor) on the test results
+
+<Aside type="caution" title="Customer sign-off is mandatory for B.4.1">
+The B.4.1 control specifically requires **evidence of customer approval** of the test
+results. In the classroom context, your **trainer acts as the CFS sponsor**. Do not skip
+the sign-off step — an unsigned test plan does not satisfy B.4.1.
+</Aside>
+
+## Module B control — B.4.1
+
+> **B.4.1 — Validation and Testing**
+> The partner has conducted validation and testing of the networking solution and has
+> documented the results, including evidence of customer review and acceptance of the
+> test results.
+
+The auditor checks for: a test plan with defined pass criteria, executed test results,
+a remediation log for any failures, and a customer-signed acceptance.
+
+## Agents and skills used
+
+| Agent / Skill | File | Role |
+|---|---|---|
+| `validation-engineer` | `.github/agents/validation-engineer.agent.md` | Generates the test plan, interprets Connection Monitor results, analyses NSG flow logs |
+| `challenger` | `.github/agents/challenger.agent.md` | Reviews test coverage — are all security controls tested? |
+| Skill: `b41-test-plan.prompt.md` | `.github/prompts/b41-test-plan.prompt.md` | Test case template and scoring |
+
+## MCP tools used
+
+- **Azure documentation MCP** — retrieves Network Watcher and NSG flow log documentation
+- **Azure MCP** — can query Connection Monitor test group results directly
+
+## The CFS test scope
+
+The test plan covers all four security layers of the CFS deployment:
+
+| Layer | What to test |
+|---|---|
+| **Network segmentation** | Hub-to-spoke routing, inter-spoke isolation, Firewall policy enforcement |
+| **Private networking** | DNS resolves to private IPs; no public endpoints reachable |
+| **Secure access** | Bastion-only admin access; no direct SSH/RDP from internet |
+| **Global delivery** | Front Door → App Gateway → private compute path; WAF blocking test payload |
+
+## Part A — Generate the test plan
+
+<Steps>
+1. Ask the `validation-engineer` to generate the CFS test plan:
+   ```
+   @validation-engineer Generate a B4.1 test plan for the Contoso Financial Services
+   hub & spoke deployment. Cover network segmentation, private networking, secure admin
+   access, NSG flow log validation, and WAF testing. Include pass criteria for each test.
+   ```
+
+2. Review the generated test cases. Each test case must include:
+   - **Test ID** (e.g. `TC-01`)
+   - **Description** — what is being tested
+   - **Pre-conditions** — resources that must exist
+   - **Steps** — how to execute the test
+   - **Expected result** (pass criteria)
+   - **Actual result** (to fill in during execution)
+   - **Status** (Pass / Fail / Remediated)
+
+3. Challenge the test plan coverage:
+   ```
+   @challenger Review this test plan. Are all CFS security requirements from B.1.1 tested?
+   Is the WAF in Prevention mode verified? Is private DNS resolution tested?
+   ```
+
+4. Fill in `evidence-templates/B4.1_TestPlan_CFS_v1.docx` with the test cases before
+   execution.
+</Steps>
+
+## Part B — Enable NSG flow logs and Network Watcher
+
+<Steps>
+1. Verify Network Watcher is enabled for Sweden Central:
+   ```bash
+   az network watcher list -o table
+   # If missing: az network watcher configure -l swedencentral -g NetworkWatcherRG --enabled true
+   ```
+
+2. Enable NSG flow logs on the hub and spoke NSGs:
+   ```bash
+   # Hub NSG
+   az network watcher flow-log create \
+     --name cfs-hub-nsg-flowlog \
+     --nsg cfs-hub-nsg-swc \
+     --resource-group rg-cfs-hub-swc \
+     --storage-account cfsstswc \
+     --enabled true \
+     --format JSON \
+     --log-version 2 \
+     --retention 30 \
+     --traffic-analytics true \
+     --workspace cfs-law-swc
+   ```
+   Repeat for the spoke NSG (`cfs-app-nsg-swc`).
+
+3. Confirm flow logs are active:
+   ```bash
+   az network watcher flow-log list \
+     --location swedencentral -o table
+   ```
+</Steps>
+
+## Part C — Connection Monitor tests
+
+<Steps>
+1. Create a Connection Monitor test group for CFS:
+   ```bash
+   az network watcher connection-monitor create \
+     --name cfs-connection-monitor \
+     --resource-group rg-cfs-hub-swc \
+     --location swedencentral \
+     --test-groups '[
+       {
+         "name": "hub-to-spoke",
+         "sources": [{"resourceId": "<hub-vm-id>", "type": "AzureVM"}],
+         "destinations": [{"address": "10.1.4.4", "type": "IPAddress"}],
+         "testConfigurations": [{"name":"tcp-80","protocol":"Tcp","tcpConfiguration":{"port":80}}]
+       }
+     ]'
+   ```
+
+2. Run key test cases manually using Azure CLI or Bastion:
+
+   **TC-01: Hub to spoke routing via Firewall**
+   ```bash
+   # From a hub VM (via Bastion), ping the spoke compute private IP
+   ping 10.1.4.4 -c 4
+   # Expected: success (Firewall allows)
+   ```
+
+   **TC-02: Spoke cannot reach spoke directly (no direct peering)**
+   ```bash
+   # Verify inter-spoke isolation — traffic must go via hub Firewall
+   # Check Firewall logs for the flow
+   az monitor activity-log list --resource-group rg-cfs-hub-swc \
+     --start-time "$(date -d '1 hour ago' +%Y-%m-%dT%H:%MZ)" -o table
+   ```
+
+   **TC-03: Private DNS resolution**
+   ```bash
+   # From spoke compute (via Bastion)
+   nslookup cfs-kv-swc.vault.azure.net
+   # Expected: 10.1.x.x private IP (not the public Azure IP)
+   ```
+
+   **TC-04: No public access to Key Vault**
+   ```bash
+   # From outside the VNet (e.g. Cloud Shell in a separate subscription)
+   curl -s "https://cfs-kv-swc.vault.azure.net/keys?api-version=7.4"
+   # Expected: 403 Forbidden (network ACL denies public access)
+   ```
+
+   **TC-05: Bastion is the only admin path**
+   ```bash
+   # Attempt direct SSH to spoke VM public IP
+   ssh azureuser@<spoke-vm-private-ip>
+   # Expected: connection refused (no public IP, no direct port 22 from internet)
+   ```
+
+   **TC-06: WAF blocks OWASP test payload**
+   ```bash
+   AFD_ENDPOINT="<your-front-door-hostname>"
+   curl -I "https://${AFD_ENDPOINT}/?<script>alert(1)</script>"
+   # Expected: HTTP 403 from WAF (XSS rule match)
+   ```
+
+3. Record **Actual result** and **Status** for each test case in the test plan document.
+</Steps>
+
+## Part D — Review NSG flow logs and Traffic Analytics
+
+<Steps>
+1. Wait 5–10 minutes after tests for flow logs to populate, then review in Azure Portal:
+   **Network Watcher → Traffic Analytics → select the Log Analytics workspace**
+
+2. Confirm in Traffic Analytics:
+   - Traffic from spoke to internet is shown via Hub Firewall (not direct)
+   - Bastion access appears in allowed flows
+   - Any blocked flows show as denied with the NSG rule that blocked them
+
+3. Ask the agent to interpret results:
+   ```
+   @validation-engineer Review these NSG flow log findings. Are there any unexpected
+   allowed flows that should be blocked? Any denied flows that indicate misconfiguration?
+   ```
+</Steps>
+
+## Part E — Remediate failures
+
+<Steps>
+1. For any failed test cases, document the remediation in the test plan:
+   ```
+   @validation-engineer TC-03 failed: DNS resolves to public IP instead of private.
+   What is the most likely root cause and fix for a private endpoint DNS configuration?
+   ```
+
+2. Apply the fix (e.g. add missing Private DNS Zone VNet link), re-run the test, and
+   update the status to **Remediated**.
+
+3. Ensure all test cases are **Pass** or **Remediated** before proceeding to sign-off.
+</Steps>
+
+## Part F — Customer sign-off (MANDATORY)
+
+<Aside type="caution" title="This step is required for B.4.1">
+Do not skip this. An unsigned or unacknowledged test results document does **not** satisfy
+B.4.1. In the classroom, your **trainer** plays the CFS sponsor role.
+</Aside>
+
+<Steps>
+1. Prepare the sign-off document:
+   ```
+   @evidence-author Prepare B4.1_SignOff_CFS_v1.docx. Summarise the test results:
+   X tests passed, Y remediated, 0 outstanding failures. Include the test execution date,
+   environment (swedencentral), and a signature block for the CFS sponsor.
+   ```
+
+2. Hand the document to your trainer (CFS sponsor). The trainer reviews and:
+   - Confirms all test cases are Pass or Remediated
+   - Signs (or prints name + date) in the signature block
+   - Notes any conditional acceptances or follow-up items
+
+3. Scan or photograph the signed document and attach it to `B4.1_SignOff_CFS_v1.docx`.
+   In a digital-only workflow, a named acknowledgement in a Teams/email thread is acceptable
+   — attach the thread screenshot.
+
+4. Confirm the challenger is satisfied:
+   ```
+   @challenger Review the sign-off document. Is the customer acceptance unambiguous?
+   Are all test outcomes clearly linked to the B.4.1 test plan?
+   ```
+</Steps>
+
+## Validation checklist
+
+| Check | Evidence |
+|---|---|
+| Test plan document has ≥6 test cases with pass criteria | `B4.1_TestPlan_CFS_v1.docx` |
+| All test cases show actual results | Test plan, Actual Result column |
+| All tests are Pass or Remediated (0 open failures) | Test plan, Status column |
+| NSG flow logs are enabled on hub and spoke | `az network watcher flow-log list` |
+| Network Watcher is enabled in Sweden Central | `az network watcher list` |
+| Customer sign-off is present (name + date + acknowledgement) | `B4.1_SignOff_CFS_v1.docx` |
+
+## Evidence artifacts
+
+| Control | Artifact | Template |
+|---|---|---|
+| B.4.1 | `B4.1_TestPlan_CFS_v1.docx` | `evidence-templates/B4.1_TestPlan_CFS_v1.docx` |
+| B.4.1 | `B4.1_SignOff_CFS_v1.docx` | `evidence-templates/B4.1_SignOff_CFS_v1.docx` |
+
+## Cost estimate
+
+Challenge 05 uses existing deployed resources. Additional cost:
+
+| Resource | Estimated cost |
+|---|---|
+| Network Watcher Connection Monitor | ~€0.50 (small test group) |
+| Log Analytics workspace (flow logs) | ~€0.50 (ingestion) |
+| **Total this challenge** | **~€1** |
+
+<Aside type="tip" title="Trainer tip — sign-off in a virtual class">
+For virtual delivery, use a shared Word document in OneDrive. The trainer adds a named
+comment `"Approved by [Trainer Name] on [Date] acting as CFS sponsor"` and the pupil
+screenshots the comment thread for the evidence artifact. This is equivalent to a physical
+signature for audit purposes.
+</Aside>

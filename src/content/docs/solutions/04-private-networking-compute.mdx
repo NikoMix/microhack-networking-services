@@ -1,0 +1,103 @@
+---
+title: "Solution 04 — Private Networking, Isolation & Private Compute + Global Delivery"
+description: Trainer solution key for Challenge 04. Includes expected private endpoint DNS resolution, App Gateway WAF configuration validation, Front Door Private Link setup, and grading hints for the completed B.3.2 evidence.
+sidebar:
+  order: 5
+  label: "Sol 04 · Private Networking"
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="Trainer-only">
+This page contains expected outputs and a reference service list. Do not share until
+Challenge 04 is complete.
+</Aside>
+
+## Expected private endpoint DNS resolution
+
+After correct deployment, DNS lookup from inside the spoke VNet should return private IPs:
+
+| Service | FQDN | Expected IP range |
+|---|---|---|
+| Key Vault | `cfs-kv-swc.vault.azure.net` | `10.1.3.x` |
+| Storage | `cfsstswc.blob.core.windows.net` | `10.1.3.x` |
+| SQL | `cfs-sql-swc.database.windows.net` | `10.1.3.x` |
+
+If DNS returns a public IP (e.g. `52.x.x.x`), the Private DNS Zone is not linked to the VNet.
+Fix: add a VNet link on `privatelink.vaultcore.azure.net` for `cfs-app-vnet-swc`.
+
+```bash
+az network private-dns link vnet create \
+  --resource-group rg-cfs-app-swc \
+  --zone-name privatelink.vaultcore.azure.net \
+  --name cfs-app-vnet-link \
+  --virtual-network cfs-app-vnet-swc \
+  --registration-enabled false
+```
+
+## Expected App Gateway WAF state
+
+```bash
+az network application-gateway waf-config show \
+  --gateway-name cfs-app-agw-swc -g rg-cfs-app-swc \
+  --query '{firewallMode:firewallMode, ruleSetType:ruleSetType, ruleSetVersion:ruleSetVersion, requestBodyCheck:requestBodyCheck}' -o json
+# Expected:
+# { "firewallMode": "Prevention", "ruleSetType": "OWASP", "ruleSetVersion": "3.2", "requestBodyCheck": true }
+```
+
+## Front Door → App Gateway Private Link (key configuration)
+
+The most common pupil mistake is configuring Front Door to use the App Gateway's public IP
+directly, bypassing the WAF. The correct configuration:
+
+1. App Gateway has a **private frontend IP** only (or public + private)
+2. Front Door origin type is **Application gateway** with Private Link enabled
+3. The Front Door origin approval request must be approved on the App Gateway resource
+
+```bash
+# Check pending Private Link approvals on App Gateway
+az network application-gateway private-link-resource list \
+  --gateway-name cfs-app-agw-swc -g rg-cfs-app-swc -o table
+
+# Approve Front Door's Private Link connection
+az network private-endpoint-connection approve \
+  --resource-name cfs-app-agw-swc \
+  --resource-group rg-cfs-app-swc \
+  --type Microsoft.Network/applicationGateways \
+  --name <connection-name>
+```
+
+## Reference B.3.2 service table (completed — 8 services)
+
+| # | Azure service | Resource name | RG | Scenario |
+|---|---|---|---|---|
+| 1 | Virtual Network + VNet Peering | `cfs-hub-vnet-swc`, `cfs-app-vnet-swc` | hub, app | Secure network infrastructure |
+| 2 | Azure Firewall Premium | `cfs-hub-afw-swc` | hub | Secure network infrastructure |
+| 3 | Azure Bastion Standard | `cfs-hub-bas-swc` | hub | Secure network infrastructure |
+| 4 | VPN Gateway | `cfs-hub-gw-swc` | hub | On-prem/branch connectivity |
+| 5 | Private Link / Private Endpoints | `pe-kv-swc`, `pe-st-swc`, `pe-sql-swc` | app | Secure network infrastructure |
+| 6 | Azure Load Balancer (Internal) | `cfs-app-ilb-swc` | app | Secure network infrastructure |
+| 7 | Application Gateway + WAF v2 | `cfs-app-agw-swc` | app | Secure global app delivery |
+| 8 | Azure Front Door Premium + WAF | `cfs-afd-profile` | global | Secure global app delivery |
+
+Note: ExpressRoute is documented as design-only in ADR-06. This is explicitly called out
+in the B.3.2 artifact and is acceptable — the 8 deployed services far exceed the ≥5 minimum.
+
+## Common pitfalls
+
+| Pitfall | Root cause | Fix |
+|---|---|---|
+| DNS resolves to public IP | DNS zone not linked to spoke VNet | Add VNet link on each `privatelink.*` DNS zone |
+| Front Door returns 502 | Private Link connection not approved on App Gateway | Approve the pending Private Endpoint connection |
+| App Gateway in Detection mode | Wrong WAF mode in Bicep parameters | Update `wafMode: 'Prevention'` and redeploy |
+| Public IP on compute VMs | NIC configuration error | Remove public IP from NIC; restart VM |
+| Bastion connection fails | Bastion in wrong subnet or wrong SKU | Bastion must be in AzureBastionSubnet; Standard SKU for IP-based connection |
+
+## Grading hints for B.3.2 (final)
+
+- **Excellent**: All 8 services listed with resource names, RGs, and scenario mapping;
+  ExpressRoute noted as design-only with ADR reference; challenger review passed.
+- **Pass**: ≥5 services listed with resource names; minor omissions (e.g. Load Balancer
+  listed as internal only without SKU detail).
+- **Fail**: Fewer than 5 services, or services listed by type only (not resource name),
+  or generic descriptions without CFS context.

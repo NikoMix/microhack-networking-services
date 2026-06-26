@@ -1,0 +1,107 @@
+---
+title: "Solution 02 — Solution Design + Well-Architected Review"
+description: Trainer solution key for Challenge 02. Includes a reference HLD summary, ALZ design area answers, a reference WAR scoring for Security and Reliability, common pitfalls, and grading hints.
+sidebar:
+  order: 3
+  label: "Sol 02 · Solution Design + WAR"
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="Trainer-only">
+This page contains reference answers for both B.2.1 and B.2.2. Do not share until pupils
+have submitted both artifacts.
+</Aside>
+
+## Reference HLD summary (B.2.1)
+
+### Topology
+
+```
+Hub VNet: cfs-hub-vnet-swc (10.0.0.0/16)
+  Subnets:
+    AzureFirewallSubnet         10.0.1.0/26
+    AzureBastionSubnet          10.0.2.0/26
+    GatewaySubnet               10.0.3.0/27
+    RouteServerSubnet           10.0.4.0/27
+
+Spoke VNet: cfs-app-vnet-swc (10.1.0.0/16)
+  Subnets:
+    snet-app                    10.1.1.0/24
+    snet-appgw                  10.1.2.0/24  (App Gateway dedicated)
+    snet-pe                     10.1.3.0/24  (Private Endpoints)
+    snet-compute                10.1.4.0/24  (Private compute)
+
+VNet Peering: Hub ↔ Spoke (allow-gateway-transit: hub; use-remote-gateway: spoke)
+UDR on spoke subnets: 0.0.0.0/0 → cfs-hub-afw-swc private IP (10.0.1.4)
+```
+
+### ALZ design areas — reference answers
+
+| Design area | CFS reference answer |
+|---|---|
+| **Networking topology** | Hub & spoke. Single hub in swedencentral, one spoke per workload tier. No VWAN in lab (documented as production recommendation). |
+| **Connectivity** | VPN Gateway for branches, ExpressRoute design-only for DC. BGP enabled. On-prem DNS conditional forwarder to Azure DNS. |
+| **Identity** | Entra ID P2. PIM for Network Contributor and Security Admin. Bastion Standard for admin access. No jump-box VMs. |
+| **Security** | Azure Firewall Premium with IDPS (Alert+Deny). NSG on all subnets. Private Endpoints for all PaaS. WAF on App Gateway and Front Door (Prevention mode, CRS 3.2). |
+| **Management** | Log Analytics workspace in hub subscription. Network Watcher enabled. NSG flow logs version 2 with Traffic Analytics. Microsoft Defender for Cloud (CSPM). |
+| **Governance** | Management group: Landing Zone > Corp > CFS. Policy: Deny public endpoints, enforce TLS 1.2+, enforce resource tagging. Budget alert at €80. |
+
+### Key design decisions (reference decision log)
+
+| Decision | Chosen | Rationale |
+|---|---|---|
+| Firewall SKU | Premium | IDPS required for PSD2 Article 95 network isolation |
+| Admin access | Bastion Standard | No public IPs on compute; Bastion enables file transfer (Standard feature) |
+| Private DNS | Azure Private DNS Zones in hub | Centralised; auto-registration; no custom DNS server needed in lab |
+| Front Door SKU | Premium | Required for Private Link to App Gateway origin |
+| ExpressRoute | Design-only | €200+/month; branch VPN is sufficient for lab |
+
+## Reference WAR scores (B.2.2)
+
+### Security pillar
+
+| Finding | Severity | Current | Target | Recommendation |
+|---|---|---|---|---|
+| Network segmentation | High | 3 | 5 | Implement Azure Firewall IDPS in Alert+Deny mode; add micro-segmentation NSG rules |
+| Identity and access | Medium | 3 | 4 | Enable PIM for all privileged network roles; enforce MFA |
+| Data protection | Medium | 4 | 5 | Enforce Private Endpoints for all PaaS; disable public network access via Azure Policy |
+| Threat detection | Low | 2 | 4 | Enable Microsoft Defender for Cloud; integrate NSG flow logs with Sentinel |
+
+**Security pillar score: Current 3/5 → Target 4.5/5**
+
+### Reliability pillar
+
+| Finding | Severity | Current | Target | Recommendation |
+|---|---|---|---|---|
+| Zone redundancy | High | 2 | 5 | Deploy Firewall, App Gateway, and Bastion as zone-redundant; use ZRS storage |
+| Failover paths | Medium | 3 | 4 | Configure VPN active-active; document ExpressRoute as ER failover design |
+| Health monitoring | Low | 3 | 4 | Deploy Connection Monitor across all critical paths; create alerting runbook |
+| Recovery procedures | Low | 2 | 4 | Document gateway failover SOP; define and test RTO/RPO for network components |
+
+**Reliability pillar score: Current 2.5/5 → Target 4.25/5**
+
+## Common pitfalls
+
+| Pitfall | Impact |
+|---|---|
+| HLD replicates the requirements document instead of designing the solution | B.2.1 fail — HLD must show topology and service selection, not requirements |
+| WAR uses generic Microsoft guidance instead of CFS-specific findings | B.2.2 partial — findings must reference CFS context (PSD2, branch count) |
+| Only one WAF pillar covered | B.2.2 fail — minimum 2 pillars; Security is mandatory |
+| WAR scoring without justification (just numbers) | B.2.2 partial — each score needs a 1-line rationale |
+| Design decisions listed without alternatives | B.2.1 partial — auditor wants to see options considered |
+| Missing topology diagram | B.2.1 fail — a diagram (even text-based) is required |
+
+## Grading hints
+
+### B.2.1 HLD
+
+- **Excellent**: Mermaid or visio-quality diagram, all 6 ALZ areas, decision log with 5+ entries including rationale and trade-offs, CFS-specific throughout.
+- **Pass**: Text topology, 5+ ALZ areas, 3+ decisions with rationale.
+- **Fail**: No topology, or fewer than 4 ALZ areas, or decision list without rationale.
+
+### B.2.2 WAR
+
+- **Excellent**: Security + Reliability + 1 additional pillar, maturity scores with justification, CFS-specific findings, prioritised recommendations with Azure service references.
+- **Pass**: Security + Reliability, maturity scores, 3+ findings per pillar, some CFS specificity.
+- **Fail**: Only 1 pillar, or Security pillar missing, or all recommendations are generic Microsoft advice.
