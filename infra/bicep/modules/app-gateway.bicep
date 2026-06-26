@@ -1,5 +1,6 @@
-// Application Gateway v2 with an attached WAF policy (OWASP), public L7 ingress.
-metadata description = 'WAF_v2 Application Gateway routing to the internal load balancer backend.'
+// Application Gateway v2 with an attached WAF policy (OWASP) and a Private Link
+// configuration so Front Door Premium can reach it over a private connection.
+metadata description = 'WAF_v2 Application Gateway (Private Link enabled) routing to the internal load balancer backend.'
 
 @description('Application Gateway name.')
 param name string
@@ -16,6 +17,9 @@ param tags object
 @description('Application Gateway subnet resource ID.')
 param subnetResourceId string
 
+@description('Dedicated Private Link subnet resource ID (network policies disabled).')
+param privateLinkSubnetResourceId string
+
 @description('Backend IP address (the internal load balancer frontend).')
 param backendIpAddress string
 
@@ -25,6 +29,11 @@ param logAnalyticsWorkspaceResourceId string
 // Deterministic public DNS label so Front Door has a stable origin host name.
 var dnsLabel = toLower('${name}-${uniqueString(resourceGroup().id)}')
 var frontendFqdn = '${dnsLabel}.${location}.cloudapp.azure.com'
+
+// Name of the frontend IP configuration that exposes the Private Link service.
+// Front Door Premium references this name as the shared-private-link "group id".
+var frontendIpConfigName = 'public'
+var privateLinkConfigName = 'agw-pl'
 
 // Self-referential resource ID used to wire listeners/rules to sub-resources.
 var agwResourceId = resourceId('Microsoft.Network/applicationGateways', name)
@@ -98,11 +107,35 @@ module appGateway 'br/public:avm/res/network/application-gateway:0.9.0' = {
     ]
     frontendIPConfigurations: [
       {
-        name: 'public'
+        name: frontendIpConfigName
         properties: {
           publicIPAddress: {
             id: publicIp.outputs.resourceId
           }
+          // Expose this frontend through Private Link so Front Door Premium can
+          // connect privately rather than over the public internet.
+          privateLinkConfiguration: {
+            id: '${agwResourceId}/privateLinkConfigurations/${privateLinkConfigName}'
+          }
+        }
+      }
+    ]
+    privateLinkConfigurations: [
+      {
+        name: privateLinkConfigName
+        properties: {
+          ipConfigurations: [
+            {
+              name: 'agw-pl-ipconfig'
+              properties: {
+                privateIPAllocationMethod: 'Dynamic'
+                primary: true
+                subnet: {
+                  id: privateLinkSubnetResourceId
+                }
+              }
+            }
+          ]
         }
       }
     ]
@@ -182,5 +215,8 @@ module appGateway 'br/public:avm/res/network/application-gateway:0.9.0' = {
 @description('Application Gateway resource ID.')
 output resourceId string = appGateway.outputs.resourceId
 
-@description('Public FQDN of the Application Gateway frontend (Front Door origin).')
+@description('Public FQDN of the Application Gateway frontend (Front Door origin host header).')
 output frontendFqdn string = frontendFqdn
+
+@description('Frontend IP configuration name exposing Private Link (Front Door shared-private-link group id).')
+output frontendIpConfigName string = frontendIpConfigName

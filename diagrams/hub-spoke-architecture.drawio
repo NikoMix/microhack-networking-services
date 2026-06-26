@@ -45,7 +45,7 @@
     <mxCell id="fw-subnet" value="AzureFirewallSubnet&#xa;10.0.0.0/26" style="swimlane;startSize=25;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=9;fontColor=#7f3f00;" vertex="1" parent="hub-bg">
       <mxGeometry x="30" y="55" width="480" height="120" as="geometry"/>
     </mxCell>
-    <mxCell id="fw" value="Azure Firewall&#xa;(Standard SKU)&#xa;cfs-hub-fw-swc&#xa;Zones: 1,2,3&#xa;Threat Intel: ON" style="shape=mxgraph.azure2.firewall;fillColor=#FF8000;strokeColor=#CC5500;fontSize=9;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="fw-subnet">
+    <mxCell id="fw" value="Azure Firewall&#xa;(Premium SKU)&#xa;cfs-hub-fw-swc&#xa;Zones: 1,2,3&#xa;IDPS: Deny | Threat Intel: ON" style="shape=mxgraph.azure2.firewall;fillColor=#FF8000;strokeColor=#CC5500;fontSize=9;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="fw-subnet">
       <mxGeometry x="170" y="20" width="140" height="70" as="geometry"/>
     </mxCell>
     <mxCell id="fw-pip" value="Public IP&#xa;(Firewall egress)" style="shape=mxgraph.azure2.public_ip_addresses;fillColor=#0070C0;strokeColor=#004C8C;fontSize=8;fontColor=#FFFFFF;" vertex="1" parent="fw-subnet">
@@ -113,7 +113,7 @@
     <mxCell id="vm2" value="VM: cfs-app-vm-swc-002&#xa;No Public IP!&#xa;D2s_v5 | Zone 2&#xa;Managed Identity" style="shape=mxgraph.azure2.virtual_machine;fillColor=#1a5e20;strokeColor=#0d3b10;fontSize=9;fontColor=#FFFFFF;" vertex="1" parent="app-subnet">
       <mxGeometry x="220" y="40" width="130" height="100" as="geometry"/>
     </mxCell>
-    <mxCell id="ilb" value="Internal Load Balancer&#xa;cfs-app-ilb-swc&#xa;Standard SKU&#xa;Frontend: 10.1.3.4" style="shape=mxgraph.azure2.load_balancer;fillColor=#0f5132;strokeColor=#0a3622;fontSize=8;fontColor=#FFFFFF;" vertex="1" parent="app-subnet">
+    <mxCell id="ilb" value="Internal Load Balancer&#xa;cfs-app-ilb-swc&#xa;Standard SKU&#xa;Frontend: 10.1.3.10" style="shape=mxgraph.azure2.load_balancer;fillColor=#0f5132;strokeColor=#0a3622;fontSize=8;fontColor=#FFFFFF;" vertex="1" parent="app-subnet">
       <mxGeometry x="370" y="40" width="120" height="80" as="geometry"/>
     </mxCell>
     <mxCell id="nsg-app" value="NSG: app-nsg" style="text;html=1;fontSize=8;fontColor=#cc0000;fontStyle=1;" vertex="1" parent="app-subnet">
@@ -148,7 +148,7 @@
     <mxCell id="global-bg" value="Global Edge — rg-cfs-edge-swc" style="swimlane;startSize=30;fillColor=#e1f5e1;strokeColor=#00AA00;fontStyle=1;fontSize=11;fontColor=#004400;swimlaneLine=1;" vertex="1" parent="azure-bg">
       <mxGeometry x="1240" y="50" width="320" height="280" as="geometry"/>
     </mxCell>
-    <mxCell id="afd" value="Azure Front Door Standard&#xa;cfs-edge-afd-swc&#xa;WAF Policy: Prevention&#xa;Global Anycast" style="shape=mxgraph.azure2.front_door;fillColor=#00AA00;strokeColor=#007700;fontSize=10;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="global-bg">
+    <mxCell id="afd" value="Azure Front Door Premium&#xa;cfs-edge-afd-swc&#xa;WAF: Prevention (DRS 2.1 + Bot Mgr)&#xa;Private Link origin &#8594; App Gateway" style="shape=mxgraph.azure2.front_door;fillColor=#00AA00;strokeColor=#007700;fontSize=10;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="global-bg">
       <mxGeometry x="80" y="60" width="160" height="100" as="geometry"/>
     </mxCell>
     <mxCell id="afd-waf" value="WAF Policy&#xa;Prevention mode" style="shape=mxgraph.azure2.web_application_firewall_policies;fillColor=#CC0000;strokeColor=#990000;fontSize=8;fontColor=#FFFFFF;" vertex="1" parent="global-bg">

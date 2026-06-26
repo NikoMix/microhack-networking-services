@@ -64,3 +64,39 @@ az deployment sub create \
 
 echo "==> Deployment complete. Outputs:"
 az deployment sub show --name "${DEPLOYMENT_NAME}" --query properties.outputs --output jsonc
+
+# -----------------------------------------------------------------------------
+# Post-deploy: approve the Front Door Premium -> Application Gateway Private Link
+# connection. The shared private link request lands as "Pending" on the App
+# Gateway and must be approved before Front Door can route to the origin.
+# -----------------------------------------------------------------------------
+if [[ "${COMPONENT}" == "all" || "${COMPONENT}" == "edge" ]]; then
+  echo "==> Approving Front Door -> App Gateway Private Link connection..."
+  AGW_ID="$(az deployment sub show --name "${DEPLOYMENT_NAME}" \
+    --query "properties.outputs.applicationGatewayResourceId.value" --output tsv)"
+  if [[ -z "${AGW_ID}" ]]; then
+    echo "    No Application Gateway in this deployment — skipping."
+  else
+    APPROVED="false"
+    for _ in $(seq 1 10); do
+      PENDING="$(az network private-endpoint-connection list --id "${AGW_ID}" \
+        --query "[?properties.privateLinkServiceConnectionState.status=='Pending'].id" \
+        --output tsv 2>/dev/null || true)"
+      if [[ -n "${PENDING}" ]]; then
+        while IFS= read -r CONN_ID; do
+          [[ -z "${CONN_ID}" ]] && continue
+          az network private-endpoint-connection approve --id "${CONN_ID}" \
+            --description 'Approved by lab deploy (Front Door Premium origin)' --output none
+          echo "    Approved: ${CONN_ID}"
+          APPROVED="true"
+        done <<< "${PENDING}"
+        break
+      fi
+      sleep 15
+    done
+    if [[ "${APPROVED}" != "true" ]]; then
+      echo "    No pending connection found yet. If Front Door shows an unapproved origin, re-run:"
+      echo "      az network private-endpoint-connection list --id ${AGW_ID}"
+    fi
+  fi
+fi

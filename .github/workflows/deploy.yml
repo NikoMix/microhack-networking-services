@@ -73,3 +73,26 @@ jobs:
           az deployment sub show \
             --name "cfs-network-${{ inputs.component }}-${{ github.run_id }}" \
             --query properties.outputs --output jsonc
+
+      - name: Approve Front Door -> App Gateway Private Link
+        if: ${{ inputs.whatIfOnly == false && (inputs.component == 'all' || inputs.component == 'edge') }}
+        run: |
+          AGW_ID="$(az deployment sub show \
+            --name "cfs-network-${{ inputs.component }}-${{ github.run_id }}" \
+            --query "properties.outputs.applicationGatewayResourceId.value" --output tsv)"
+          if [ -z "$AGW_ID" ]; then echo "No Application Gateway in this deployment — skipping."; exit 0; fi
+          for _ in $(seq 1 10); do
+            PENDING="$(az network private-endpoint-connection list --id "$AGW_ID" \
+              --query "[?properties.privateLinkServiceConnectionState.status=='Pending'].id" --output tsv 2>/dev/null || true)"
+            if [ -n "$PENDING" ]; then
+              while IFS= read -r CONN; do
+                [ -z "$CONN" ] && continue
+                az network private-endpoint-connection approve --id "$CONN" \
+                  --description 'Approved by deploy workflow (Front Door Premium origin)' --output none
+                echo "Approved: $CONN"
+              done <<< "$PENDING"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "No pending connection found yet; if the Front Door origin shows unapproved, re-run this step."

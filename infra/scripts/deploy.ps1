@@ -63,3 +63,40 @@ az deployment sub create `
 
 Write-Host "==> Deployment complete. Outputs:" -ForegroundColor Green
 az deployment sub show --name $DeploymentName --query properties.outputs --output jsonc
+
+# -----------------------------------------------------------------------------
+# Post-deploy: approve the Front Door Premium -> Application Gateway Private Link
+# connection. The shared private link request lands as "Pending" on the App
+# Gateway and must be approved before Front Door can route to the origin.
+# -----------------------------------------------------------------------------
+if ($Component -eq 'all' -or $Component -eq 'edge') {
+    Write-Host "==> Approving Front Door -> App Gateway Private Link connection..." -ForegroundColor Cyan
+    $agwId = az deployment sub show --name $DeploymentName `
+        --query "properties.outputs.applicationGatewayResourceId.value" --output tsv
+    if ([string]::IsNullOrWhiteSpace($agwId)) {
+        Write-Host "    No Application Gateway in this deployment — skipping." -ForegroundColor DarkGray
+    }
+    else {
+        # The connection can take a short while to appear; poll briefly.
+        $approved = $false
+        foreach ($attempt in 1..10) {
+            $pending = az network private-endpoint-connection list --id $agwId `
+                --query "[?properties.privateLinkServiceConnectionState.status=='Pending'].id" `
+                --output tsv 2>$null
+            if (-not [string]::IsNullOrWhiteSpace($pending)) {
+                foreach ($connId in ($pending -split "`n" | Where-Object { $_ })) {
+                    az network private-endpoint-connection approve --id $connId `
+                        --description 'Approved by lab deploy (Front Door Premium origin)' --output none
+                    Write-Host "    Approved: $connId" -ForegroundColor Green
+                    $approved = $true
+                }
+                break
+            }
+            Start-Sleep -Seconds 15
+        }
+        if (-not $approved) {
+            Write-Host "    No pending connection found yet. If Front Door shows an unapproved origin, re-run:" -ForegroundColor Yellow
+            Write-Host "      az network private-endpoint-connection list --id $agwId" -ForegroundColor Yellow
+        }
+    }
+}

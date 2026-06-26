@@ -13,11 +13,11 @@ flowchart TB
   subgraph azure["☁️ Azure — Sweden Central (swedencentral)"]
 
     subgraph global_edge["🌍 Global Edge — rg-cfs-edge-swc"]
-      afd["Azure Front Door Standard<br/>cfs-edge-afd-swc<br/>WAF: Prevention | OWASP 3.2<br/>Global anycast"]
+      afd["Azure Front Door Premium<br/>cfs-edge-afd-swc<br/>WAF: Prevention | DRS 2.1 + Bot Mgr<br/>Private Link origin &#8594; App Gateway"]
     end
 
     subgraph hub["🔑 Hub VNet — cfs-hub-vnet-swc (10.0.0.0/16)<br/>rg-cfs-hub-swc"]
-      fw["🔥 Azure Firewall Standard<br/>cfs-hub-fw-swc<br/>10.0.0.4 (private)<br/>Zones: 1,2,3 | Threat Intel ON<br/>AzureFirewallSubnet: 10.0.0.0/26"]
+      fw["🔥 Azure Firewall Premium<br/>cfs-hub-fw-swc<br/>10.0.0.4 (private)<br/>Zones: 1,2,3 | IDPS: Deny<br/>AzureFirewallSubnet: 10.0.0.0/26"]
       bas["🛡️ Azure Bastion Standard<br/>cfs-hub-bas-swc<br/>Browser RDP/SSH<br/>AzureBastionSubnet: 10.0.1.0/26"]
       vpngw["🔗 VPN Gateway<br/>cfs-hub-vpng-swc<br/>IKEv2 | BGP ASN 65515<br/>GatewaySubnet: 10.0.2.0/27"]
       law["📊 Log Analytics WS<br/>cfs-hub-law-swc<br/>Retention: 90 days"]
@@ -33,7 +33,7 @@ flowchart TB
       subgraph app_subnet["AppSubnet (10.1.0.0/24) — UDR: 0/0 → Firewall"]
         vm1["💻 cfs-app-vm-swc-001<br/>D2s_v5 | Zone 1<br/>NO PUBLIC IP<br/>Managed Identity"]
         vm2["💻 cfs-app-vm-swc-002<br/>D2s_v5 | Zone 2<br/>NO PUBLIC IP<br/>Managed Identity"]
-        ilb["⚖️ Internal Load Balancer<br/>cfs-app-ilb-swc<br/>Standard | Frontend: 10.1.3.4"]
+        ilb["⚖️ Internal Load Balancer<br/>cfs-app-ilb-swc<br/>Standard | Frontend: 10.1.3.10"]
       end
 
       subgraph pe_subnet["PrivateEndpointSubnet (10.1.1.0/24)"]

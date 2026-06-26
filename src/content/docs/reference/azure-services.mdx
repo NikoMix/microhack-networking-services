@@ -93,7 +93,7 @@ The "Why for CFS" column maps directly to the requirements from B.1.1.
 | **CFS resource name** | `cfs-app-agw-swc` |
 | **Why for CFS** | CFS's external-facing application requires application-layer DDoS and OWASP protection before traffic reaches the backend. App Gateway sits in the spoke, in front of the internal Load Balancer. |
 | **Module B controls** | B.3.1, B.3.2 (Service 7), B.4.1 (WAF tested) |
-| **Key config for lab** | SKU: WAF_v2 · WAF mode: Prevention (not Detection) · Ruleset: OWASP 3.2 · Dedicated subnet: `snet-appgw` (/24) · Backend pool: internal Load Balancer frontend IP |
+| **Key config for lab** | SKU: WAF_v2 · WAF mode: Prevention (not Detection) · Ruleset: OWASP 3.2 · Dedicated subnet: `snet-appgw` (/24) · Backend pool: internal Load Balancer frontend IP · Private Link exposed on the public frontend via `snet-agw-pl` (/24, network policies disabled) for the Front Door Premium origin |
 | **WAF pillar** | Security: OWASP protection; Reliability: zone-redundant v2 SKU |
 
 ### 8 — Azure Front Door Premium + WAF Policy
@@ -104,7 +104,8 @@ The "Why for CFS" column maps directly to the requirements from B.1.1.
 | **CFS resource names** | `cfs-edge-afd-swc`, `cfs-edge-afd-swc-ep` |
 | **Why for CFS** | CFS serves customers across the EU and must provide low-latency, DDoS-protected global delivery. Front Door Premium's Private Link origin connects to App Gateway without exposing it to the internet. |
 | **Module B controls** | B.3.1, B.3.2 (Service 8), B.4.1 (WAF tested) |
-| **Key config for lab** | SKU: Premium (required for Private Link origin) · WAF policy: Prevention mode · Origin: App Gateway via Private Link approval · Custom domain: optional in lab |
+| **Key config for lab** | SKU: Premium (required for Private Link origin) · WAF policy: Prevention mode (DRS 2.1 + Bot Manager) · Origin: App Gateway via Private Link — **connection must be approved post-deploy** · Custom domain: optional in lab |
+| **Post-deploy step** | The shared Private Link request lands **Pending** on the App Gateway. `deploy.ps1`/`deploy.sh` and the `deploy.yml` workflow auto-approve it for `component=all`/`edge`; to approve manually: `az network private-endpoint-connection list --id <appgw-id>` then `... approve --id <conn-id>` |
 | **Cost indicator** | ~€5–8/day |
 
 ## Design-only service — ExpressRoute

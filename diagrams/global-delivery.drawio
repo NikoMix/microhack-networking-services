@@ -23,10 +23,10 @@
     </mxCell>
 
     <!-- AFD Global Layer -->
-    <mxCell id="afd-box" value="Azure Front Door Standard (Global)" style="swimlane;startSize=30;fillColor=#E1F5E1;strokeColor=#00AA00;fontStyle=1;fontSize=12;fontColor=#004400;" vertex="1" parent="1">
+    <mxCell id="afd-box" value="Azure Front Door Premium (Global)" style="swimlane;startSize=30;fillColor=#E1F5E1;strokeColor=#00AA00;fontStyle=1;fontSize=12;fontColor=#004400;" vertex="1" parent="1">
       <mxGeometry x="200" y="150" width="280" height="460" as="geometry"/>
     </mxCell>
-    <mxCell id="afd" value="Azure Front Door&#xa;cfs-edge-afd-swc&#xa;Global Anycast PoP&#xa;HTTPS only&#xa;HTTP→HTTPS redirect" style="shape=mxgraph.azure2.front_door;fillColor=#00AA00;strokeColor=#007700;fontSize=10;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="afd-box">
+    <mxCell id="afd" value="Azure Front Door&#xa;cfs-edge-afd-swc&#xa;Global Anycast PoP&#xa;HTTPS only&#xa;HTTP&#8594;HTTPS redirect&#xa;Premium | Private Link origin" style="shape=mxgraph.azure2.front_door;fillColor=#00AA00;strokeColor=#007700;fontSize=10;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="afd-box">
       <mxGeometry x="60" y="50" width="160" height="100" as="geometry"/>
     </mxCell>
     <mxCell id="afd-waf" value="WAF Policy: Prevention&#xa;Microsoft_DefaultRuleSet 2.1&#xa;OWASP 3.2 rules&#xa;DDoS protection (AFD)" style="rounded=1;fillColor=#CC0000;strokeColor=#990000;fontSize=9;fontColor=#FFFFFF;" vertex="1" parent="afd-box">
@@ -56,7 +56,7 @@
     <mxCell id="ilb-box" value="ILBSubnet 10.1.3.0/24" style="swimlane;startSize=25;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;fontColor=#1a5e20;" vertex="1" parent="azure-region">
       <mxGeometry x="310" y="50" width="240" height="120" as="geometry"/>
     </mxCell>
-    <mxCell id="ilb" value="Internal Load Balancer&#xa;cfs-app-ilb-swc&#xa;Standard | Frontend: 10.1.3.4&#xa;Health probe: HTTP /health" style="shape=mxgraph.azure2.load_balancer;fillColor=#0f5132;strokeColor=#0a3622;fontSize=8;fontColor=#FFFFFF;" vertex="1" parent="ilb-box">
+    <mxCell id="ilb" value="Internal Load Balancer&#xa;cfs-app-ilb-swc&#xa;Standard | Frontend: 10.1.3.10&#xa;Health probe: HTTP /health" style="shape=mxgraph.azure2.load_balancer;fillColor=#0f5132;strokeColor=#0a3622;fontSize=8;fontColor=#FFFFFF;" vertex="1" parent="ilb-box">
       <mxGeometry x="40" y="25" width="160" height="75" as="geometry"/>
     </mxCell>
 
@@ -117,7 +117,7 @@
     <mxCell id="e-afd-agw" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6b0099;strokeWidth=2.5;" edge="1" source="afd" target="agw" parent="1">
       <mxGeometry relative="1" as="geometry"/>
     </mxCell>
-    <mxCell id="e-afd-agw-lbl" value="HTTPS → Origin&#xa;(App Gateway)" style="edgeLabel;fontSize=8;fontColor=#6b0099;fontStyle=1;" vertex="1" connectable="0" parent="e-afd-agw">
+    <mxCell id="e-afd-agw-lbl" value="HTTPS &#8594; Origin&#xa;(App Gateway via Private Link)" style="edgeLabel;fontSize=8;fontColor=#6b0099;fontStyle=1;" vertex="1" connectable="0" parent="e-afd-agw">
       <mxGeometry relative="0.5" as="geometry"/>
     </mxCell>
 

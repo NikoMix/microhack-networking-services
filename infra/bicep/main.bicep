@@ -123,6 +123,7 @@ var spokeSubnets = {
   workload: '10.1.0.0/24'
   privateEndpoints: '10.1.1.0/24'
   appGateway: '10.1.2.0/24'
+  appGatewayPrivateLink: '10.1.4.0/24'
   loadBalancer: '10.1.3.0/24'
 }
 
@@ -243,6 +244,7 @@ module spokeNetwork 'modules/spoke-network.bicep' = if (deploySpokeNetwork) {
     workloadSubnetPrefix: spokeSubnets.workload
     privateEndpointSubnetPrefix: spokeSubnets.privateEndpoints
     appGatewaySubnetPrefix: spokeSubnets.appGateway
+    appGatewayPrivateLinkSubnetPrefix: spokeSubnets.appGatewayPrivateLink
     loadBalancerSubnetPrefix: spokeSubnets.loadBalancer
     firewallPrivateIp: firewall.outputs.privateIp
   }
@@ -359,6 +361,7 @@ module appGateway 'modules/app-gateway.bicep' = if (doEdge) {
     location: location
     tags: tags
     subnetResourceId: spokeNetwork.?outputs.appGatewaySubnetResourceId ?? ''
+    privateLinkSubnetResourceId: spokeNetwork.?outputs.appGatewayPrivateLinkSubnetResourceId ?? ''
     backendIpAddress: ilbPrivateIp
     logAnalyticsWorkspaceResourceId: monitoring.outputs.resourceId
   }
@@ -376,6 +379,9 @@ module frontDoor 'modules/front-door.bicep' = if (doEdge && deployFrontDoor) {
     wafPolicyName: names.frontDoorWafPolicy
     tags: tags
     originHostName: appGateway.?outputs.frontendFqdn ?? ''
+    originPrivateLinkResourceId: appGateway.?outputs.resourceId ?? ''
+    originPrivateLinkGroupId: appGateway.?outputs.frontendIpConfigName ?? ''
+    originPrivateLinkLocation: location
     logAnalyticsWorkspaceResourceId: monitoring.outputs.resourceId
   }
 }
@@ -442,4 +448,5 @@ output logAnalyticsWorkspaceResourceId string = monitoring.outputs.resourceId
 output keyVaultResourceId string = keyVault.?outputs.resourceId ?? ''
 output storageAccountResourceId string = storage.?outputs.resourceId ?? ''
 output applicationGatewayFqdn string = appGateway.?outputs.frontendFqdn ?? ''
+output applicationGatewayResourceId string = appGateway.?outputs.resourceId ?? ''
 output frontDoorEndpointHostName string = (doEdge && deployFrontDoor) ? (frontDoor.?outputs.endpointHostName ?? '') : ''
