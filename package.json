@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
-    "@marp-team/marp-cli": "^4.4.0",
+    "@marp-team/marp-cli": "^4.5.0",
     "markdownlint-cli2": "^0.22.1",
     "typescript": "^6.0.3"
   },
