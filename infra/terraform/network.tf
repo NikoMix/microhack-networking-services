@@ -71,7 +71,7 @@ module "firewall_policy" {
 
 module "hub_vnet" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
-  version = "0.19.0"
+  version = "0.22.0"
 
   name             = local.names.hub_vnet
   location         = azurerm_resource_group.this["hub"].location
@@ -135,7 +135,7 @@ resource "azurerm_route_table" "workload" {
 
 module "spoke_vnet" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
-  version = "0.19.0"
+  version = "0.22.0"
 
   name             = local.names.spoke_vnet
   location         = azurerm_resource_group.this["spoke"].location
