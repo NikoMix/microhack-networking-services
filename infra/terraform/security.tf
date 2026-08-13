@@ -154,7 +154,7 @@ module "key_vault" {
 
 module "storage_account" {
   source  = "Azure/avm-res-storage-storageaccount/azurerm"
-  version = "0.7.3"
+  version = "0.8.0"
 
   name                          = local.names.storage_account
   location                      = azurerm_resource_group.this["spoke"].location
