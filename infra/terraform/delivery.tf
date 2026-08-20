@@ -51,7 +51,7 @@ resource "azurerm_web_application_firewall_policy" "app_gateway" {
 
 module "application_gateway" {
   source  = "Azure/avm-res-network-applicationgateway/azurerm"
-  version = "0.5.2"
+  version = "0.5.3"
 
   name                = local.names.app_gateway
   location            = azurerm_resource_group.this["spoke"].location
